@@ -10,6 +10,17 @@
       "name": "gosrc2cpg Object Main",
       "mainClass": "io.joern.gosrc2cpg.Main",
       "args": [
+        "/home/hieucien/Workspace/ast/joern-rust/gin"
+      ],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "rustsrc2cpg Object Main",
+      "mainClass": "io.joern.rustsrc2cpg.Main",
+      "args": [
         "/home/hieucien/Workspace/ast/joern-go/gin"
       ],
       "jvmOptions": [],

@@ -12,17 +12,10 @@ lazy val macros            = Projects.macros
 lazy val semanticcpg       = Projects.semanticcpg
 lazy val x2cpg             = Projects.x2cpg
 lazy val gosrc2cpg         = Projects.gosrc2cpg
+lazy val rustsrc2cpg       = Projects.rustsrc2cpg
 
-lazy val aggregatedProjects: Seq[ProjectReference] = Seq(
-  joerncli,
-  querydb,
-  console,
-  dataflowengineoss,
-  macros,
-  semanticcpg,
-  x2cpg,
-  gosrc2cpg
-)
+lazy val aggregatedProjects: Seq[ProjectReference] =
+  Seq(joerncli, querydb, console, dataflowengineoss, macros, semanticcpg, x2cpg, gosrc2cpg, rustsrc2cpg)
 
 ThisBuild / libraryDependencies ++= Seq(
   "org.slf4j"                % "slf4j-api"         % "2.0.7",

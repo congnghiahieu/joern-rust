@@ -10,6 +10,10 @@ import overflowdb.Config
 import java.nio.file.Path
 import scala.util.Try
 
+object ExtendLanguages {
+  final val RUSTLANG = "RUSTLANG"
+}
+
 object CpgGeneratorFactory {
   private val KNOWN_LANGUAGES = Set(
     Languages.C,
@@ -26,7 +30,8 @@ object CpgGeneratorFactory {
     Languages.KOTLIN,
     Languages.NEWC,
     Languages.JAVASRC,
-    Languages.SWIFTSRC
+    Languages.SWIFTSRC,
+    ExtendLanguages.RUSTLANG
   )
 }
 

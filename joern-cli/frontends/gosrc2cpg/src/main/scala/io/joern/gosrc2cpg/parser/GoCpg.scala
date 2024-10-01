@@ -25,7 +25,7 @@ class GoCpg extends X2CpgFrontend[Config] {
 
     X2Cpg.withNewEmptyCpg(config.outputPath, config) { (cpg, config) =>
       val goModule = GoModule(config)
-      better.files.File.usingTemporaryDirectory("gosrccpg_tmp") { tempWorkingDir =>
+      better.files.File.usingTemporaryDirectory("gosrc2cpg_tmp") { tempWorkingDir =>
         new MetaDataPass(cpg, Languages.GOLANG, config.inputPath).createAndApply()
         val astCreationPass = new AstCreationPass(cpg, config, tempWorkingDir.pathAsString, goModule, report)
         astCreationPass.createAndApply()

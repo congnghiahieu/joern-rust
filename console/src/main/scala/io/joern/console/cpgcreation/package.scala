@@ -32,7 +32,9 @@ package object cpgcreation {
 //      case Languages.GHIDRA    => Some(GhidraCpgGenerator(conf, rootPath))
 //      case Languages.KOTLIN    => Some(KotlinCpgGenerator(conf, rootPath))
       case Languages.GOLANG => Some(GoCpgGenerator(conf, rootPath))
-      case _                => None
+      case ExtendLanguages.RUSTLANG =>
+        Some(RustCpgGenerator(conf, rootPath))
+      case _ => None
     }
   }
 
@@ -76,6 +78,9 @@ package object cpgcreation {
   private def isGoFile(filename: String): Boolean =
     filename.endsWith(".go") || Set("gopkg.lock", "gopkg.toml", "go.mod", "go.sum").contains(filename)
 
+  private def isRustFile(filename: String): Boolean =
+    filename.endsWith(".rs") || Set("Cargo.lock", "Cargo.toml").contains(filename)
+
   private def isLlvmFile(filename: String): Boolean =
     Seq(".bc", ".ll").exists(filename.endsWith)
 
@@ -93,6 +98,7 @@ package object cpgcreation {
       case f if isJavaBinary(f)      => Some(Languages.JAVA)
       case f if isCsharpFile(f)      => Some(Languages.CSHARPSRC)
       case f if isGoFile(f)          => Some(Languages.GOLANG)
+      case f if isRustFile(f)        => Some(ExtendLanguages.RUSTLANG)
       case f if isJsFile(f)          => Some(Languages.JSSRC)
       case f if f.endsWith(".java")  => Some(Languages.JAVASRC)
       case f if f.endsWith(".class") => Some(Languages.JAVA)

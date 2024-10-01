@@ -25,10 +25,12 @@ def frontendMappings(frontendName: String, stagedProject: File): Seq[(File, Stri
   }
 }
 
-lazy val x2cpg         = project.in(file("frontends/x2cpg"))
-lazy val gosrc2cpg = project.in(file("frontends/gosrc2cpg"))
+lazy val x2cpg       = project.in(file("frontends/x2cpg"))
+lazy val gosrc2cpg   = project.in(file("frontends/gosrc2cpg"))
+lazy val rustsrc2cpg = project.in(file("frontends/rustsrc2cpg"))
 
 Universal / mappings ++= frontendMappings("gosrc2cpg", (gosrc2cpg / stage).value)
+Universal / mappings ++= frontendMappings("rustsrc2cpg", (rustsrc2cpg / stage).value)
 
 lazy val cpgVersionFile = taskKey[File]("persist cpg version in file (e.g. for schema-extender)")
 cpgVersionFile := {
