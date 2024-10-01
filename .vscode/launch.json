@@ -1,0 +1,19 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "gosrc2cpg Object Main",
+      "mainClass": "io.joern.gosrc2cpg.Main",
+      "args": [
+        "/home/hieucien/Workspace/ast/joern-go/gin"
+      ],
+      "jvmOptions": [],
+      "env": {}
+    }
+  ]
+}
