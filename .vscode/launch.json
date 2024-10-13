@@ -10,7 +10,7 @@
       "name": "gosrc2cpg Object Main",
       "mainClass": "io.joern.gosrc2cpg.Main",
       "args": [
-        "/home/hieucien/Workspace/ast/joern-rust/gin"
+        "/home/hieucien/Workspace/ast/go-parser/parser/tests"
       ],
       "jvmOptions": [],
       "env": {}
@@ -18,10 +18,21 @@
     {
       "type": "scala",
       "request": "launch",
-      "name": "rustsrc2cpg Object Main",
+      "name": "rustsrc2cpg Object Main Projects",
       "mainClass": "io.joern.rustsrc2cpg.Main",
       "args": [
-        "/home/hieucien/Workspace/ast/joern-go/gin"
+        "/home/hieucien/Workspace/ast/rust-parser/parser/tests/projects"
+      ],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "rustsrc2cpg Object Main Examples",
+      "mainClass": "io.joern.rustsrc2cpg.Main",
+      "args": [
+        "/home/hieucien/Workspace/ast/rust-parser/parser/tests/examples"
       ],
       "jvmOptions": [],
       "env": {}

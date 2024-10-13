@@ -135,23 +135,108 @@ More details in the [separate querydb readme](querydb/README.md)
 
 # Thứ tự chạy
 
-- joern-cli/frontends/x2cpg/src/main/scala/io/joern/x2cpg/X2Cpg.scala `X2CpgConfig`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/Main.scala `Frontend`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/Main.scala `gocpg.run(config)`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/parser/GoCpg.scala `createCpg`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/ast/GoModule.scala `loadModule()`
+- joern-cli/frontends/x2cpg/src/main/scala/io/joern/x2cpg/X2Cpg.scala `X2CpgMain`
+- joern-cli/frontends/x2cpg/src/main/scala/io/joern/x2cpg/X2Cpg.scala `main()`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/Main.scala `rustcpg.run(config)`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/parser/RustCpg.scala `createCpg`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/ast/GoModule.scala `loadModule()`
 - joern-cli/frontends/x2cpg/src/main/scala/io/joern/x2cpg/passes/frontend/MetaDataPass.scala `MetaDataPass`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/passes/AstCreationPass.scala `AstCreationPass`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/passes/AstCreationPass.scala `generateParts`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/passes/AstCreationPass.scala `runOnPart`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/parser/JsonParser.scala `parse`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/parser/JsonParser.scala `mapParent` (recursive)
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/astcreation/AstCreator.scala `AstCreator`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/astcreation/AstCreator.scala `createAst`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/astcreation/AstCreator.scala `astForTranslationUnit`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/astcreation/AstCreator.scala `astForPackageNode`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/astcreation/AstCreator.scala `astForGoAstNode`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/passes/TypeResolverPass.scala `TypeResolverPass`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/passes/TypeResolverPass.scala `run`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/passes/ModuleResolverPass.scala `ModuleResolverPass`
-- joern-cli/frontends/gosrc2cpg/src/main/scala/io/joern/gosrc2cpg/passes/ModuleResolverPass.scala `run`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/passes/AstCreationPass.scala `AstCreationPass`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/passes/AstCreationPass.scala `generateParts`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/passes/AstCreationPass.scala `runOnPart`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/parser/JsonParser.scala `parse`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/parser/JsonParser.scala `mapParent` (recursive)
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/astcreation/AstCreator.scala `AstCreator`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/astcreation/AstCreator.scala `createAst`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/astcreation/AstCreator.scala `astForTranslationUnit`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/astcreation/AstCreator.scala `astForPackageNode`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/astcreation/AstCreator.scala `astForGoAstNode`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/passes/TypeResolverPass.scala `TypeResolverPass`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/passes/TypeResolverPass.scala `run`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/passes/ModuleResolverPass.scala `ModuleResolverPass`
+- joern-cli/frontends/rustsrc2cpg/src/main/scala/io/joern/rustsrc2cpg/passes/ModuleResolverPass.scala `run`
+
+convert below rust to scala in these line, with NOTE what:
+
+- using `class`
+- declare variable inside class curly brace
+- do not generate constructor
+- use None value for Option type
+- Use `ListBuffer` to replace `Vec` and `Punctuated`
+- When you see attribute `skip_serializing_if`, use Option as type wrapper
+- When you see attribute `#[serde(flatten)]`, using `@JsonUnwrapped` property of jackson for that field
+- When you see attribute `#[serde(transparent)]`, generate a comment above that variable
+- Replace `Box` type with `Option` in scala
+- Special notice for `rename` attribute in `#[serde(rename = "...")]`. For example, have `#[serde(rename = "stmts")]`, so use `stmts` as variable name
+- Do not use `defaultness`, use `default`
+- Do not use `unsafety`, use `unsafe`
+- Do nut use `mutability` use `mut`
+- Dot not use `block` use `stmts`
+
+- We already have `attrs`, skip it
+
+#file:Item.scala apply all class (from ItemForeignMod) variable to these case, note that:
+
+Given class, apply variable to these case, note that
+
+- ignore variable `attrs`
+- use variable name instead of `case _:`
+- see above examples
+- ignore variable that have been commented
+- ignore variable `mac`, `unsafe`, `ident`, `move`, `label`, `const`, `static`, `async`, `dot2_token`, `lifetime`
+- ignore variable that have type `String`, `Indent`, `Index`, `Option[Boolean]`, `Boolean`
+- For type `Item`, use `mapParentForItem`
+- For type `Visibility`, use `mapParentForVisibility`
+- For type `Fields`, use `mapParentForFields`
+- For type `FieldsNamed`, use `mapParentForFieldsNamed`
+- For type `FieldsUnnamed`, use `mapParentForFieldsUnnamed`
+- For type `Type`, use `mapParentForType`
+- For type `Pat`, use `mapParentForPat`
+- For type `Expr`, use `mapParentForExpr`
+- For type `Stmt`, use `mapParentForStmt`
+- For type `FnArg`, use `mapParentForFnArg`
+- For type `ReturnType`, use `mapParentForReturnType`
+- For type `BoundLifetimes`, use `mapParentForBoundLifetimes`
+- For type `GenericParam`, use `mapParentForGenericParam`
+- For type `WherePredicate`, use `mapParentForWherePredicate`
+- For type `TokenStream`, use `mapParentForTokenStream`
+- For type `TokenTree`, use `mapParentForTokenTree`
+- For type `ForeignItem`, use `mapParentForForeignItem`
+- For type `ImplItem`, use `mapParentForImplItem`
+- For type `TypeParamBound`, use `mapParentForTypeParamBound`
+- For type `TraitItem`, use `mapParentForTraitItem`
+- For type `UseTree`, use `mapParentForUseTree`
+- For type `GenericArgument`, use `mapParentForGenericArgument`
+- For type `PathArguments`, use `mapParentForPathArguments`
+
+- convert this to fit all below function, use `else if` instead of `if`. At the end put a `else` cause that throw error
+- Use `astFor` function below, corresspoding their variable name
+
+- see #, # (function ``) and # , generate compatible file with the same pattern
+- convert this to fit all below function, use `else if` instead of `if`. At the end put a `else` cause that throw error
+- Do not use `addChild`
+
+- generate 1 more trait CodeFor... based on this trait, function return String instead of Ast
+
+- With class of function, for example `ExprClosure` generate missing code for each property of class. See above function as examples
+
+- create a variable equal `NewTypeArgument()`, then wrapped it in `Ast()`
+- use `NewTypeArgument()` only, remove .name
+
+- give related information to `TraitItemConst...`.
+- create a variable equal `New...()` (NewLocal for example), then wrapped it in `Ast(NewMember())`
+- Use Ast(NewMember()).withChild(...)
+- Remove comment
+
+- rename all function name to pattern `astForPat...`
+
+- convert all the `if ... else Nil` to using flatmap to check Option
+- Correspoding variable then using `withChildren` instead of `withChild`
+- See this examples: `val annotationsAst = macroStmtInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))`
+
+For each function, generate the missing code:
+
+- a variable typeFullname equal to corresspoding `typeFullnameForType...` of function
+- a variable node equal `NewTypeRef()` with `.typeFullname` set to variable `typeFullname` above
+- return `Ast(node)`
+- see function `astForTypeArray` for example
