@@ -225,20 +225,20 @@
 `NewConfigFile`
 `NewControlStructure`
 `NewDependency`
-`NewFieldIdentifier`
+`NewFieldIdentifier`: : No child
 `NewFile`
 `NewFinding`
 `NewIdentifier`
-`NewImport`
+`NewImport`: No child
 `NewJumpLabel`
 `NewJumpTarget`
 `NewKeyValuePair`
 `NewLiteral`
-`NewLocal`
+`NewLocal`: No child
 `NewLocation`
 `NewMember`
 `NewMetaData`
-`NewMethod`
+`NewMethod`: Phải có con là 1 node `NewMethodReturn`, `NewMethodParameterIn`
 `NewMethodParameterIn`
 `NewMethodParameterOut`
 `NewMethodRef`
@@ -254,5 +254,5 @@
 `NewTypeArgument`
 `NewTypeDecl`
 `NewTypeParameter`
-`NewTypeRef`
+`NewTypeRef`: No child
 `NewUnknown`

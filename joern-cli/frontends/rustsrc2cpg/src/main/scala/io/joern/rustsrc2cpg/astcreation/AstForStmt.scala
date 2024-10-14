@@ -63,7 +63,8 @@ trait AstForStmt(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       .typeFullName(localInstance.init.flatMap(_.expr.map(_.toString)).getOrElse(""))
 
     val initAst = localInstance.init.map(astForLocalInit(filename, parentFullname, _)).toList
-    Ast(localNode).withChildren(initAst)
+    Ast(localNode)
+    // .withChildren(initAst)
   }
 
   def astForLocalInit(filename: String, parentFullname: String, localInitInstance: LocalInit): Ast = {

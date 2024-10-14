@@ -63,9 +63,9 @@ trait AstForItem(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val newLocalNode = localNode(itemConst, itemConst.ident, code, typeFullname)
 
     Ast(newLocalNode)
-      .withChild(Ast(modifierNode))
-      .withChildren(annotationsAst)
-      .withChildren(genericsAst)
+    // .withChild(Ast(modifierNode))
+    // .withChildren(annotationsAst)
+    // .withChildren(genericsAst)
   }
 
   def astForItemEnum(filename: String, parentFullname: String, itemEnum: ItemEnum): Ast = {
@@ -97,8 +97,8 @@ trait AstForItem(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val importNode = newImportNode(code, importedEntity, importedAs, itemExternCrate)
 
     Ast(importNode)
-      .withChild(Ast(modifierNode))
-      .withChildren(annotationsAst)
+    // .withChild(Ast(modifierNode))
+    // .withChildren(annotationsAst)
   }
 
   def astForItemFn(filename: String, parentFullname: String, itemFn: ItemFn): Ast = {
@@ -115,6 +115,7 @@ trait AstForItem(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val methodReturnAst   = astForReturnType(filename, parentFullname, itemFn.output)
 
     Ast(newMethodNode)
+      .withChild(Ast(NewMethodReturn()))
       .withChildren(annotationsAst)
       .withChildren(parameterIns)
       .withChild(blockAst)
@@ -173,8 +174,8 @@ trait AstForItem(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(true) =>
         val importNode = NewImport()
         Ast(importNode)
-          .withChild(Ast(modifierNode))
-          .withChildren(annotationsAst)
+      // .withChild(Ast(modifierNode))
+      // .withChildren(annotationsAst)
       case _ =>
         var code = s"mod ${itemMod.ident} {}"
         if (itemMod.unsafe.getOrElse(false)) { code = s"unsafe ${code}" }
@@ -216,8 +217,8 @@ trait AstForItem(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val newLocalNode = localNode(itemStatic, itemStatic.ident, code, typeFullname)
 
     Ast(newLocalNode)
-      .withChild(Ast(modifierNode))
-      .withChildren(annotationsAst)
+    // .withChild(Ast(modifierNode))
+    // .withChildren(annotationsAst)
   }
 
   def astForItemStruct(filename: String, parentFullname: String, itemStruct: ItemStruct): Ast = {
@@ -317,7 +318,7 @@ trait AstForItem(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val importNode = newImportNode(code, importedEntity, importedAs, itemUse)
 
     Ast(importNode)
-      .withChild(Ast(modifierNode))
-      .withChildren(annotationsAst)
+    // .withChild(Ast(modifierNode))
+    // .withChildren(annotationsAst)
   }
 }

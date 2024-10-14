@@ -37,8 +37,8 @@ trait AstForTraitItem(implicit schemaValidationMode: ValidationMode) { this: Ast
   }
 
   def astForTraitItemFn(filename: String, parentFullname: String, traitItemFn: TraitItemFn): Ast = {
-    val newMethod = NewMethod()
-    Ast(NewMember()).withChild(Ast(newMethod))
+    val newMethodAst = Ast(NewMethod()).withChild(Ast(NewMethodReturn()))
+    Ast(NewMember()).withChild(newMethodAst)
   }
 
   def astForTraitItemType(filename: String, parentFullname: String, traitItemType: TraitItemType): Ast = {

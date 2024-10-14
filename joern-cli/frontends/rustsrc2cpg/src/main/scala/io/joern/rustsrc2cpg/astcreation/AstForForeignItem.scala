@@ -41,6 +41,7 @@ trait AstForForeignItem(implicit schemaValidationMode: ValidationMode) {
     val methodReturnAst = astForReturnType(filename, parentFullname, fnForeignItemInstance.output)
 
     val methodAst = Ast(newMethodNode)
+      .withChild(Ast(NewMethodReturn()))
       .withChildren(annotationsAst)
       .withChildren(parameterIns)
       .withChildren(modifierAst)
@@ -67,8 +68,9 @@ trait AstForForeignItem(implicit schemaValidationMode: ValidationMode) {
     val newLocalNode = localNode(staticForeignItemInstance, staticForeignItemInstance.ident, code, typeFullname)
 
     val staticAst = Ast(newLocalNode)
-      .withChild(Ast(modifierNode))
-      .withChildren(annotationsAst)
+    // .withChild(Ast(modifierNode))
+    // .withChildren(annotationsAst)
+
     Ast(NewMember()).withChild(staticAst)
   }
 

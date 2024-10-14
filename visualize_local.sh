@@ -9,7 +9,7 @@ DATABASE_USER="neo4j"
 DATABASE_PASSWORD="12345678"
 
 rm -rf $OUTPUT_DIR
-$SCRIPT_ABS_DIR/joern-export --repr=all --format=neo4jcsv --out $OUTPUT_DIR ./cpg.bin
+$SCRIPT_ABS_DIR/joern-export --repr=all --format=neo4jcsv --out $OUTPUT_DIR ./joern-cli/frontends/rustsrc2cpg/cpg.bin
 
 # docker pull neo4j:5.23.0-community-bullseye
 

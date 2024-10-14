@@ -36,8 +36,8 @@ trait AstForImplItem(implicit schemaValidationMode: ValidationMode) { this: AstC
   }
 
   def astForImplItemFn(filename: String, parentFullname: String, fnImplItemInstance: ImplItemFn): Ast = {
-    val newMethod = NewMethod()
-    Ast(NewMember()).withChild(Ast(newMethod))
+    val newMethodAst = Ast(NewMethod()).withChild(Ast(NewMethodReturn()))
+    Ast(NewMember()).withChild(newMethodAst)
   }
 
   def astForImplItemType(filename: String, parentFullname: String, typeImplItemInstance: ImplItemType): Ast = {

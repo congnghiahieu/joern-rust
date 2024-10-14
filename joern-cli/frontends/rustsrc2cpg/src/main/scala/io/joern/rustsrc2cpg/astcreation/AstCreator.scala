@@ -100,6 +100,8 @@ class AstCreator(
     namespaceStack.pop()
 
     namespaceAst
+      .withChildren(annotationsAst)
+      .withChildren(itemAst)
   }
 
   //  TODO: Need implements correctly
