@@ -16,7 +16,20 @@ import scala.collection.mutable.ListBuffer
 
 trait AstForTraitBoundModifier(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
   def astForTraitBound(filename: String, parentFullname: String, traitBound: TraitBound): Ast = {
-    val node = NewTypeParameter()
+    val typeFullname = traitBound.path match {
+      case Some(path) => typeFullnameForPath(filename, parentFullname, path)
+      case None       => ""
+    }
+    var code = traitBound.paren_token match {
+      case Some(true) => s"($typeFullname)"
+      case _          => typeFullname
+    }
+    code = traitBound.modifier match {
+      case Some(TraitBoundModifier.Maybe) => s"?$code"
+      case _                              => code
+    }
+
+    val node = NewTypeParameter().name(typeFullname).code(code)
     Ast(node)
   }
 

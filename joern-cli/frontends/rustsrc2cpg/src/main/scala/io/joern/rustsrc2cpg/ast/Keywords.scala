@@ -56,3 +56,23 @@ object Keywords {
   val KW_UNION          = "union"
   val KW_STATICLIFETIME = "'static"
 }
+
+object Primitives {
+  val BOOL  = "bool"
+  val CHAR  = "char"
+  val STR   = "str"
+  val U8    = "u8"
+  val U16   = "u16"
+  val U32   = "u32"
+  val U64   = "u64"
+  val U128  = "u128"
+  val USIZE = "usize"
+  val I8    = "i8"
+  val I16   = "i16"
+  val I32   = "i32"
+  val I64   = "i64"
+  val I128  = "i128"
+  val ISIZE = "isize"
+  val F32   = "f32"
+  val F64   = "f64"
+}

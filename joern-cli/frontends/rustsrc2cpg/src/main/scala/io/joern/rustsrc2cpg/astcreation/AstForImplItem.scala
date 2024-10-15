@@ -31,24 +31,24 @@ trait AstForImplItem(implicit schemaValidationMode: ValidationMode) { this: AstC
   }
 
   def astForImplItemConst(filename: String, parentFullname: String, constImplItemInstance: ImplItemConst): Ast = {
-    val newLocal = NewLocal()
-    Ast(NewMember()).withChild(Ast(newLocal))
+    val newLocal = localNode(constImplItemInstance, "", "", "")
+    Ast(memberNode(EmptyAst(), "", "", "")).withChild(Ast(newLocal))
   }
 
   def astForImplItemFn(filename: String, parentFullname: String, fnImplItemInstance: ImplItemFn): Ast = {
-    val newMethodAst = Ast(NewMethod()).withChild(Ast(NewMethodReturn()))
-    Ast(NewMember()).withChild(newMethodAst)
+    val newMethodAst = Ast(NewMethod().filename(filename)).withChild(Ast(NewMethodReturn()))
+    Ast(memberNode(EmptyAst(), "", "", "")).withChild(newMethodAst)
   }
 
   def astForImplItemType(filename: String, parentFullname: String, typeImplItemInstance: ImplItemType): Ast = {
-    val newTypeDecl = NewTypeDecl()
-    Ast(NewMember()).withChild(Ast(newTypeDecl))
+    val newTypeDecl = NewTypeDecl().filename(filename)
+    Ast(memberNode(EmptyAst(), "", "", "")).withChild(Ast(newTypeDecl))
   }
 
   def astForImplItemMacro(filename: String, parentFullname: String, macroImplItemInstance: ImplItemMacro): Ast = {
     val macroRustAst =
       Macro(macroImplItemInstance.path, macroImplItemInstance.delimiter, macroImplItemInstance.tokens)
-    Ast(NewMember()).withChild(astForMacro(filename, parentFullname, macroRustAst))
+    Ast(memberNode(EmptyAst(), "", "", "")).withChild(astForMacro(filename, parentFullname, macroRustAst))
   }
 
   def astForQself(filename: String, parentFullname: String, qselfInstance: QSelf): Ast = {

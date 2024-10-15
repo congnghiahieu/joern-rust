@@ -29,7 +29,7 @@ object Main extends X2CpgMain(Frontend.cmdLineParser, new RustCpg())(Frontend.de
         var testRustCpg = RustCpg()
         testRustCpg.run(config)
       }
-    } else if (inputDir.name.endsWith("examples")) {
+    } else {
       rustcpg.run(config)
     }
   }

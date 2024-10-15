@@ -34,19 +34,18 @@ trait AstForForeignItem(implicit schemaValidationMode: ValidationMode) {
 
   def astForForeignItemFn(filename: String, parentFullname: String, fnForeignItemInstance: ForeignItemFn): Ast = {
     val annotationsAst = fnForeignItemInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val modifierAst    = fnForeignItemInstance.vis.toList.map(astForVisibility(filename, parentFullname, _))
+    val modifierNode   = modifierForVisibility(filename, parentFullname, fnForeignItemInstance.vis)
 
-    val newMethodNode   = methodNode(fnForeignItemInstance, fnForeignItemInstance.ident, "", "", filename)
-    val parameterIns    = fnForeignItemInstance.inputs.map(input => astForFnArg(filename, parentFullname, input)).toList
-    val methodReturnAst = astForReturnType(filename, parentFullname, fnForeignItemInstance.output)
+    val bodyAst       = blockAst(blockNode(fnForeignItemInstance, "", filename))
+    val newMethodNode = methodNode(fnForeignItemInstance, fnForeignItemInstance.ident, "", "", filename)
+    val parameterIns  = fnForeignItemInstance.inputs.map(input => astForFnArg(filename, parentFullname, input)).toList
+    val methodReturnTypeFullname = fnForeignItemInstance.output match {
+      case Some(output) => typeFullnameForType(filename, parentFullname, output)
+      case None         => ""
+    }
+    val methodRetNode = methodReturnNode(fnForeignItemInstance, methodReturnTypeFullname)
 
-    val methodAst = Ast(newMethodNode)
-      .withChild(Ast(NewMethodReturn()))
-      .withChildren(annotationsAst)
-      .withChildren(parameterIns)
-      .withChildren(modifierAst)
-      .withChild(methodReturnAst)
-    Ast(NewMember()).withChild(methodAst)
+    methodAstWithAnnotations(newMethodNode, parameterIns, bodyAst, methodRetNode, Seq(modifierNode), annotationsAst)
   }
 
   def astForForeignItemStatic(
@@ -56,14 +55,14 @@ trait AstForForeignItem(implicit schemaValidationMode: ValidationMode) {
   ): Ast = {
     val annotationsAst =
       staticForeignItemInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val (modifierNode, modifierString) = modifierForVisibility(filename, parentFullname, staticForeignItemInstance.vis)
+    val modifierNode = modifierForVisibility(filename, parentFullname, staticForeignItemInstance.vis)
 
     val typeFullname = staticForeignItemInstance.ty.map(typeFullnameForType(filename, parentFullname, _)).getOrElse("")
 
     val isMut = staticForeignItemInstance.mut.contains(StaticMutability.Mut)
     var code = if (isMut) { s"static mut ${staticForeignItemInstance.ident}: ${typeFullname}" }
     else { s"static ${staticForeignItemInstance.ident}: ${typeFullname}" }
-    if (modifierString == ModifierTypes.PUBLIC) { code = s"pub ${code}" }
+    if (modifierNode.modifierType == ModifierTypes.PUBLIC) { code = s"pub ${code}" }
 
     val newLocalNode = localNode(staticForeignItemInstance, staticForeignItemInstance.ident, code, typeFullname)
 
@@ -71,13 +70,13 @@ trait AstForForeignItem(implicit schemaValidationMode: ValidationMode) {
     // .withChild(Ast(modifierNode))
     // .withChildren(annotationsAst)
 
-    Ast(NewMember()).withChild(staticAst)
+    staticAst
   }
 
   def astForForeignItemType(filename: String, parentFullname: String, typeForeignItemInstance: ForeignItemType): Ast = {
     val annotationsAst =
       typeForeignItemInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val (modifierNode, modifierString) = modifierForVisibility(filename, parentFullname, typeForeignItemInstance.vis)
+    val modifierNode = modifierForVisibility(filename, parentFullname, typeForeignItemInstance.vis)
     val genericsAst =
       typeForeignItemInstance.generics.toList.flatMap(g => List(astForGenerics(filename, parentFullname, g)))
 
@@ -87,7 +86,7 @@ trait AstForForeignItem(implicit schemaValidationMode: ValidationMode) {
     val typeAst = Ast(newItemTypeNode)
       .withChildren(annotationsAst)
       .withChildren(genericsAst)
-    Ast(NewMember()).withChild(typeAst)
+    typeAst
   }
 
   def astForForeignItemMacro(
@@ -99,6 +98,6 @@ trait AstForForeignItem(implicit schemaValidationMode: ValidationMode) {
       Macro(macroForeignItemInstance.path, macroForeignItemInstance.delimiter, macroForeignItemInstance.tokens)
     val macroAst = astForMacro(filename, parentFullname, macroRustAst)
 
-    Ast(NewMember()).withChild(macroAst)
+    macroAst
   }
 }

@@ -240,3 +240,12 @@ For each function, generate the missing code:
 - a variable node equal `NewTypeRef()` with `.typeFullname` set to variable `typeFullname` above
 - return `Ast(node)`
 - see function `astForTypeArray` for example
+
+Dump intermediate graph representations (or entire graph) of code in a given export format
+Usage: joern-export [options] [cpg]
+
+--help
+cpg input CPG file name - defaults to `cpg.bin`
+-o, --out <value> output directory - will be created and must not yet exist
+--repr <value> representation to extract: [all|ast|cdg|cfg|cpg|cpg14|ddg|pdg] - defaults to `Cpg14`
+--format <value> export format, one of [dot|graphml|graphson|neo4jcsv] - defaults to `Dot`

@@ -20,11 +20,9 @@ import scala.collection.mutable.ListBuffer
 trait AstForStmt(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
 
   def astForBlock(filename: String, parentFullname: String, blockInstance: Block): Ast = {
-    val blockNode = NewBlock()
-      .code(BlockDefaults.Code)
-      .typeFullName(BlockDefaults.TypeFullName)
-
-    blockAst(blockNode, blockInstance.map(astForStmt(filename, parentFullname, _)).toList)
+    val node     = blockNode(EmptyAst())
+    val stmtsAst = blockInstance.map(astForStmt(filename, parentFullname, _)).toList
+    blockAst(node, stmtsAst)
   }
 
   def astForStmt(filename: String, parentFullname: String, stmtInstance: Stmt): Ast = {
@@ -58,13 +56,16 @@ trait AstForStmt(implicit schemaValidationMode: ValidationMode) { this: AstCreat
   }
 
   def astForLocal(filename: String, parentFullname: String, localInstance: Local): Ast = {
-    val localNode = NewLocal()
-      .code(localInstance.pat.map(_.toString).getOrElse(""))
-      .typeFullName(localInstance.init.flatMap(_.expr.map(_.toString)).getOrElse(""))
+    val annotationsAst = localInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
 
-    val initAst = localInstance.init.map(astForLocalInit(filename, parentFullname, _)).toList
-    Ast(localNode)
-    // .withChildren(initAst)
+    val name = localInstance.pat match {
+      case Some(pat) => codeForPat(filename, parentFullname, pat)
+      case None      => ""
+    }
+    val code = s"let $name"
+    val node = localNode(localInstance, name, code, name)
+
+    Ast(node)
   }
 
   def astForLocalInit(filename: String, parentFullname: String, localInitInstance: LocalInit): Ast = {

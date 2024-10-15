@@ -28,16 +28,17 @@ class RustCpg extends X2CpgFrontend[Config] {
 
   override def createCpg(config: Config): Try[Cpg] = {
 
-    val inputFile = File(config.inputPath)
-    if (!inputFile.isDirectory && !inputFile.isFile) {
-      throw new IllegalArgumentException(s"${inputFile.toString()} is not a valid directory or file.")
+    val rootPath = config.inputPath
+    val rootFile = File(rootPath)
+    if (!rootFile.isDirectory && !rootFile.isFile) {
+      throw new IllegalArgumentException(s"${rootFile.toString()} is not a valid directory or file.")
     }
 
     X2Cpg.withNewEmptyCpg(config.outputPath, config) { (cpg, config) =>
       better.files.File.usingTemporaryDirectory("rustsrc2cpg_tmp") { tempOutputDir =>
         val cargoCrate = CargoCrate(config)
 
-        new MetaDataPass(cpg, ExtendLanguages.RUSTLANG, config.inputPath).createAndApply()
+        new MetaDataPass(cpg, ExtendLanguages.RUSTLANG, rootPath).createAndApply()
 
         val astCreationPass = new AstCreationPass(cpg, config, tempOutputDir.path, cargoCrate, report)
         astCreationPass.createAndApply()

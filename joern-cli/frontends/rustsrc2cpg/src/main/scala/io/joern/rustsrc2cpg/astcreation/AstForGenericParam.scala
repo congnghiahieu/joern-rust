@@ -31,17 +31,27 @@ trait AstForGenericParam(implicit schemaValidationMode: ValidationMode) { this: 
     parentFullname: String,
     lifetimeParamInstance: LifetimeParam
   ): Ast = {
-    val typeParameterNode = NewTypeParameter()
-    Ast(typeParameterNode)
+    val lifetimePredicateAst = astForLifetimeAsParam(filename, parentFullname, lifetimeParamInstance.lifetime)
+    val boundsAst            = lifetimeParamInstance.bounds.map(astForLifetimeAsParam(filename, parentFullname, _))
+
+    lifetimePredicateAst
+    // .withChildren(boundsAst)
   }
 
   def astForTypeGenericParam(filename: String, parentFullname: String, typeParamInstance: TypeParam): Ast = {
-    val typeParameterNode = NewTypeParameter()
+    val typeParameterNode = NewTypeParameter().name(typeParamInstance.ident)
+    val boundsAst         = typeParamInstance.bounds.map(astForTypeParamBound(filename, parentFullname, _))
     Ast(typeParameterNode)
+    // .withChildren(boundsAst)
   }
 
   def astForConstGenericParam(filename: String, parentFullname: String, constParamInstance: ConstParam): Ast = {
-    val typeParameterNode = NewTypeParameter()
+    val typeFullname = constParamInstance.ty match {
+      case Some(ty) => typeFullnameForType(filename, parentFullname, ty)
+      case None     => ""
+    }
+    val typeParameterNode = NewTypeParameter().name(constParamInstance.ident)
+
     Ast(typeParameterNode)
   }
 }

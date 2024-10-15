@@ -16,67 +16,35 @@ import scala.collection.mutable.ListBuffer
 
 trait AstForVisibility(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
 
-  def astForVisibility(filename: String, parentFullname: String, visibilityInstance: Visibility): Ast = {
-    visibilityInstance match {
-      case visibilityString: VisibilityString => {
-        if (visibilityString == VisibilityString.VisibilityPublic) {
-          return Ast(newModifierNode(ModifierTypes.PUBLIC))
-        } else if (visibilityString == VisibilityString.VisibilityInherited) {
-          return Ast(newModifierNode(ModifierTypes.PUBLIC))
-        } else {
-          throw new RuntimeException(s"Unknown visibility string: $visibilityString")
-        }
-      }
-      case visibilityOther: VisibilityOther =>
-        astForVisibilityRestricted(filename, parentFullname, visibilityOther.restricted)
-    }
-  }
-
-  def astForVisibilityRestricted(
-    filename: String,
-    parentFullname: String,
-    visibilityRestrictedInstance: Option[VisibilityRestricted]
-  ): Ast = {
-    if (!visibilityRestrictedInstance.isDefined) {
-      return Ast(newModifierNode(Defines.Unknown))
-    }
-
-    return Ast(newModifierNode(ModifierTypes.PUBLIC))
+  def astForVisibility(filename: String, parentFullname: String, visibilityInstance: Option[Visibility]): Ast = {
+    Ast(modifierForVisibility(filename, parentFullname, visibilityInstance))
   }
 
   def modifierForVisibility(
     filename: String,
     parentFullname: String,
     visibilityInstance: Option[Visibility]
-  ): (NewModifier, String) = {
+  ): NewModifier = {
     if (!visibilityInstance.isDefined) {
-      return (newModifierNode(Defines.Unknown), Defines.Unknown)
+      return newModifierNode(ModifierTypes.PRIVATE)
     }
 
     visibilityInstance.get match {
       case visibilityString: VisibilityString => {
-        if (visibilityString == VisibilityString.VisibilityPublic) {
-          (newModifierNode(ModifierTypes.PUBLIC), ModifierTypes.PUBLIC)
-        } else if (visibilityString == VisibilityString.VisibilityInherited) {
-          (newModifierNode(ModifierTypes.PUBLIC), ModifierTypes.PUBLIC)
-        } else {
-          throw new RuntimeException(s"Unknown visibility string: $visibilityString")
+        visibilityString match {
+          case VisibilityString.VisibilityPublic =>
+            return newModifierNode(ModifierTypes.PUBLIC)
+          case VisibilityString.VisibilityInherited =>
+            return newModifierNode(ModifierTypes.PUBLIC)
         }
       }
-      case visibilityOther: VisibilityOther =>
-        modifierForVisibilityRestricted(filename, parentFullname, visibilityOther.restricted)
-    }
-  }
+      case visibilityOther: VisibilityOther => {
+        if (!visibilityOther.restricted.isDefined) {
+          return newModifierNode(ModifierTypes.PRIVATE)
+        }
 
-  def modifierForVisibilityRestricted(
-    filename: String,
-    parentFullname: String,
-    VisibilityRestrictedInstance: Option[VisibilityRestricted]
-  ): (NewModifier, String) = {
-    if (!VisibilityRestrictedInstance.isDefined) {
-      return (newModifierNode(Defines.Unknown), Defines.Unknown)
+        return newModifierNode(ModifierTypes.PUBLIC)
+      }
     }
-
-    return (newModifierNode(ModifierTypes.PUBLIC), ModifierTypes.PUBLIC)
   }
 }

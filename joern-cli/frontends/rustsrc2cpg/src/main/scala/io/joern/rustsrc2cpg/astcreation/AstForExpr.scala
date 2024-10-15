@@ -9,6 +9,7 @@ import io.joern.x2cpg.ValidationMode
 import io.joern.x2cpg.utils.NodeBuilders
 import io.joern.x2cpg.utils.NodeBuilders.newModifierNode
 import io.shiftleft.codepropertygraph.generated.ControlStructureTypes
+import io.shiftleft.codepropertygraph.generated.DispatchTypes
 import io.shiftleft.codepropertygraph.generated.EvaluationStrategies
 import io.shiftleft.codepropertygraph.generated.ModifierTypes
 import io.shiftleft.codepropertygraph.generated.nodes.*
@@ -104,7 +105,10 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val annotationsAst = arrayExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
     val elemsAst       = arrayExprInstance.elems.map(astForExpr(filename, parentFullname, _)).toList
 
-    val astArray = NewArrayInitializer()
+    val code = s"[${arrayExprInstance.elems.map(codeForExpr(filename, parentFullname, _)).mkString(", ")}]"
+
+    val astArray = NewArrayInitializer().code(code)
+
     Ast(astArray)
       .withChildren(annotationsAst)
       .withChildren(elemsAst)
@@ -115,7 +119,17 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val leftAst        = assignExprInstance.left.toList.map(astForExpr(filename, parentFullname, _))
     val rightAst       = assignExprInstance.right.toList.map(astForExpr(filename, parentFullname, _))
 
-    val assignAst = NewUnknown()
+    val leftCode = assignExprInstance.left match {
+      case Some(left) => codeForExpr(filename, parentFullname, left)
+      case None       => ""
+    }
+    val rightCode = assignExprInstance.right match {
+      case Some(right) => codeForExpr(filename, parentFullname, right)
+      case None        => ""
+    }
+    val code = s"$leftCode = $rightCode"
+
+    val assignAst = unknownNode(assignExprInstance, code)
     Ast(assignAst)
       .withChildren(annotationsAst)
       .withChildren(leftAst)
@@ -126,25 +140,26 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val annotationsAst = asyncExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
     val stmtAst        = astForBlock(filename, parentFullname, asyncExprInstance.stmts)
 
-    val asyncAst = NewBlock()
-    Ast(asyncAst)
-      .withChildren(annotationsAst)
-      .withChild(stmtAst)
+    val code = asyncExprInstance.move match {
+      case Some(true) => "async move"
+      case _          => "async"
+    }
+    val asyncAst = blockNode(asyncExprInstance).code(code)
+
+    blockAst(asyncAst, annotationsAst ++ Seq(stmtAst))
   }
 
   def astForExprAwait(filename: String, parentFullname: String, awaitExprInstance: ExprAwait): Ast = {
     val annotationsAst = awaitExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val awaitAst       = NewCall()
+    val awaitAst       = callNode(awaitExprInstance, ".await", ".await", "", DispatchTypes.STATIC_DISPATCH, None, None)
 
     awaitExprInstance.base match {
       case Some(base) =>
         val baseAst = astForExpr(filename, parentFullname, base)
-        Ast(awaitAst)
-          .withChildren(annotationsAst)
-          .withChild(baseAst)
+        // callAst(awaitAst, Seq(), Some(baseAst), None).withChildren(annotationsAst)
+        callAst(awaitAst, Seq(), None, None).withChildren(annotationsAst)
       case None =>
-        Ast(awaitAst)
-          .withChildren(annotationsAst)
+        callAst(awaitAst).withChildren(annotationsAst)
     }
   }
 
@@ -154,7 +169,22 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val rightAst       = binaryExprInstance.right.toList.map(astForExpr(filename, parentFullname, _))
     val opAst          = binaryExprInstance.op.toList.map(astForBinOp(filename, parentFullname, _))
 
-    val binaryAst = NewUnknown()
+    val leftCode = binaryExprInstance.left match {
+      case Some(left) => codeForExpr(filename, parentFullname, left)
+      case None       => ""
+    }
+    val rightCode = binaryExprInstance.right match {
+      case Some(right) => codeForExpr(filename, parentFullname, right)
+      case None        => ""
+    }
+    val opCode = binaryExprInstance.op match {
+      case Some(op) => op.toString
+      case None     => ""
+    }
+    val code = s"$leftCode $opCode $rightCode"
+
+    val binaryAst = unknownNode(binaryExprInstance, code)
+
     Ast(binaryAst)
       .withChildren(annotationsAst)
       .withChildren(leftAst)
@@ -167,26 +197,39 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val labelAst       = blockExprInstance.label.toList.map(astForLabel(filename, parentFullname, _))
     val stmtAst        = astForBlock(filename, parentFullname, blockExprInstance.stmts)
 
-    val exprBlockAst = NewBlock()
-    Ast(exprBlockAst)
-      .withChildren(annotationsAst)
-      .withChildren(labelAst)
-      .withChild(stmtAst)
+    val code = blockExprInstance.label match {
+      case Some(label) => s"'${label}: { }"
+      case None        => "{ }"
+    }
+
+    val exprBlockNode = blockNode(blockExprInstance).code(code)
+    blockAst(exprBlockNode, annotationsAst ++ labelAst ++ Seq(stmtAst))
   }
 
   def astForExprBreak(filename: String, parentFullname: String, breakExprInstance: ExprBreak): Ast = {
     val annotationsAst = breakExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
     val labelAst       = breakExprInstance.label.toList.map(astForLabel(filename, parentFullname, _))
-    val exprAst        = breakExprInstance.expr.toList.map(astForExpr(filename, parentFullname, _))
+    val exprAst = breakExprInstance.expr match {
+      case Some(expr) => Some(astForExpr(filename, parentFullname, expr))
+      case None       => None
+    }
 
-    val exprBreakAst = NewControlStructure()
-      .controlStructureType(ControlStructureTypes.BREAK)
-      .parserTypeName(classOf[ExprBreak].getSimpleName)
+    var code = "break"
+    code = breakExprInstance.expr match {
+      case Some(expr) => s"$code ${codeForExpr(filename, parentFullname, expr)}"
+      case None       => code
+    }
+    code = breakExprInstance.label match {
+      case Some(label) => s"break '${label}"
+      case None        => code
+    }
 
-    Ast(exprBreakAst)
+    val exprBreakNode = controlStructureNode(breakExprInstance, ControlStructureTypes.BREAK, code)
+    // controlStructureAst(exprBreakNode, exprAst)
+    controlStructureAst(exprBreakNode, None)
       .withChildren(annotationsAst)
       .withChildren(labelAst)
-      .withChildren(exprAst)
+
   }
 
   def astForExprCall(filename: String, parentFullname: String, callExprInstance: ExprCall): Ast = {
@@ -194,11 +237,15 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val funcAst        = callExprInstance.func.toList.map(astForExpr(filename, parentFullname, _))
     val argsAst        = callExprInstance.args.map(astForExpr(filename, parentFullname, _)).toList
 
-    val exprCallAst = NewCall()
-    Ast(exprCallAst)
-      .withChildren(annotationsAst)
-      .withChildren(funcAst)
-      .withChildren(argsAst)
+    val code = ""
+    val methodFullName = callExprInstance.func match {
+      case Some(func) => codeForExpr(filename, parentFullname, func)
+      case None       => ""
+    }
+    val callExprNode =
+      callNode(callExprInstance, code, methodFullName, methodFullName, DispatchTypes.STATIC_DISPATCH, None, None)
+    // callAst(callExprNode, argsAst, funcAst.headOption, None).withChildren(annotationsAst)
+    callAst(callExprNode, Seq(), None, None).withChildren(annotationsAst)
   }
 
   def astForExprCast(filename: String, parentFullname: String, castExprInstance: ExprCast): Ast = {
@@ -206,36 +253,46 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val exprAst        = castExprInstance.expr.toList.map(astForExpr(filename, parentFullname, _))
     val tyAst          = castExprInstance.ty.toList.map(astForType(filename, parentFullname, _))
 
-    val exprCastAst = NewCall()
-    Ast(exprCastAst)
-      .withChildren(annotationsAst)
-      .withChildren(exprAst)
-      .withChildren(tyAst)
+    var code = ""
+    code = castExprInstance.expr match {
+      case Some(expr) => s"${codeForExpr(filename, parentFullname, expr)}"
+      case None       => ""
+    }
+    code = castExprInstance.ty match {
+      case Some(ty) => s"$code as ${typeFullnameForType(filename, parentFullname, ty)}"
+      case None     => code
+    }
+    val castExprNode =
+      callNode(castExprInstance, code, "as", "as", DispatchTypes.STATIC_DISPATCH, None, None)
+    // callAst(castExprNode, exprAst ++ tyAst, None, None).withChildren(annotationsAst)
+    callAst(castExprNode, Seq(), None, None).withChildren(annotationsAst)
   }
 
   def astForExprClosure(filename: String, parentFullname: String, closureExprInstance: ExprClosure): Ast = {
     val annotationsAst = closureExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val bodyAst        = closureExprInstance.body.toList.map(astForExpr(filename, parentFullname, _))
-    val inputsAst      = closureExprInstance.inputs.map(astForPat(filename, parentFullname, _)).toList
-    val outputAst      = closureExprInstance.output.toList.map(astForType(filename, parentFullname, _))
+
+    val bodyAst = closureExprInstance.body.toList.map(astForExpr(filename, parentFullname, _))
+    val closureNode =
+      methodNode(closureExprInstance, Defines.Unknown, "", "", filename).isExternal(closureExprInstance.body.isEmpty)
+    val inputsAst = closureExprInstance.inputs.map(astForPat(filename, parentFullname, _)).toList
+    val methodReturnTypeFullname = closureExprInstance.output match {
+      case Some(output) => typeFullnameForType(filename, parentFullname, output)
+      case None         => ""
+    }
+    val methodRetNode = methodReturnNode(closureExprInstance, methodReturnTypeFullname)
     val lifetimeAst =
       closureExprInstance.lifetimes.toList.flatMap(_.map(astForGenericParam(filename, parentFullname, _)))
 
-    val closureAst = NewMethod()
-    Ast(closureAst)
-      .withChild(Ast(NewMethodReturn()))
-      .withChildren(annotationsAst)
-      .withChildren(inputsAst)
-      .withChildren(outputAst)
-      .withChildren(bodyAst)
-      .withChildren(lifetimeAst)
+    methodAstWithAnnotations(closureNode, inputsAst, bodyAst.head, methodRetNode, Nil, annotationsAst).withChildren(
+      lifetimeAst
+    )
   }
 
   def astForExprConst(filename: String, parentFullname: String, constExprInstance: ExprConst): Ast = {
     val annotationsAst = constExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
     val stmtsAst       = astForBlock(filename, parentFullname, constExprInstance.stmts)
 
-    val constAst = NewLocal()
+    val constAst = localNode(constExprInstance, "", "", "")
     Ast(constAst)
     // .withChildren(annotationsAst)
     // .withChild(stmtsAst)
@@ -245,11 +302,13 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val annotationsAst = continueExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
     val labelAst       = continueExprInstance.label.toList.map(astForLabel(filename, parentFullname, _))
 
-    val continueAst = NewControlStructure()
-      .controlStructureType(ControlStructureTypes.CONTINUE)
-      .parserTypeName(classOf[ExprContinue].getSimpleName)
+    val code = continueExprInstance.label match {
+      case Some(label) => s"continue '${label}"
+      case None        => "continue"
+    }
+    val exprContinueNode = controlStructureNode(continueExprInstance, ControlStructureTypes.CONTINUE, "continue")
 
-    Ast(continueAst)
+    controlStructureAst(exprContinueNode, None)
       .withChildren(annotationsAst)
       .withChildren(labelAst)
   }
@@ -258,7 +317,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val annotationsAst = fieldExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
     val baseAst        = fieldExprInstance.base.toList.flatMap(base => List(astForExpr(filename, parentFullname, base)))
 
-    val fieldAst = NewFieldIdentifier()
+    val fieldAst = fieldIdentifierNode(fieldExprInstance, "", "")
 
     Ast(fieldAst)
     // .withChildren(annotationsAst)
@@ -272,16 +331,13 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val exprAst  = forLoopExprInstance.expr.toList.flatMap(expr => List(astForExpr(filename, parentFullname, expr)))
     val bodyAst  = astForBlock(filename, parentFullname, forLoopExprInstance.body)
 
-    val forLoopAst = NewControlStructure()
-      .controlStructureType(ControlStructureTypes.FOR)
-      .parserTypeName(classOf[ExprForLoop].getSimpleName)
+    val forLoopNode = controlStructureNode(forLoopExprInstance, ControlStructureTypes.FOR, "")
 
-    Ast(forLoopAst)
+    forAst(forLoopNode, Seq(), Seq(), Seq(), Seq(), bodyAst)
       .withChildren(annotationsAst)
       .withChildren(labelAst)
       .withChildren(patAst)
       .withChildren(exprAst)
-      .withChild(bodyAst)
   }
 
   def astForExprGroup(filename: String, parentFullname: String, groupExprInstance: ExprGroup): Ast = {
@@ -302,15 +358,13 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val elseAst =
       ifExprInstance.else_branch.toList.flatMap(elseBranch => List(astForExpr(filename, parentFullname, elseBranch)))
 
-    val ifAst = NewControlStructure()
-      .controlStructureType(ControlStructureTypes.IF)
-      .parserTypeName(classOf[ExprIf].getSimpleName)
+    val exprIfNode = controlStructureNode(ifExprInstance, ControlStructureTypes.IF, "")
 
-    Ast(ifAst)
+    // controlStructureAst(exprIfNode, condAst.headOption)
+    controlStructureAst(exprIfNode, None)
       .withChildren(annotationsAst)
-      .withChildren(condAst)
-      .withChild(thenAst)
       .withChildren(elseAst)
+      .withChild(thenAst)
   }
 
   def astForExprIndex(filename: String, parentFullname: String, indexExprInstance: ExprIndex): Ast = {
@@ -318,7 +372,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val exprAst        = indexExprInstance.expr.toList.flatMap(expr => List(astForExpr(filename, parentFullname, expr)))
     val indexAst = indexExprInstance.index.toList.flatMap(index => List(astForExpr(filename, parentFullname, index)))
 
-    val indexExprAst = NewFieldIdentifier()
+    val indexExprAst = fieldIdentifierNode(indexExprInstance, "", "")
 
     Ast(indexExprAst)
     // .withChildren(annotationsAst)
@@ -329,7 +383,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
   def astForExprInfer(filename: String, parentFullname: String, inferExprInstance: ExprInfer): Ast = {
     val annotationsAst = inferExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
 
-    val exprInfAst = NewLocal()
+    val exprInfAst = localNode(inferExprInstance, "", "", "")
 
     Ast(exprInfAst)
     // .withChildren(annotationsAst)
@@ -340,7 +394,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val patAst         = letExprInstance.pat.toList.flatMap(pat => List(astForPat(filename, parentFullname, pat)))
     val exprAst        = letExprInstance.expr.toList.flatMap(expr => List(astForExpr(filename, parentFullname, expr)))
 
-    val exprLetAst = NewLocal()
+    val exprLetAst = localNode(letExprInstance, "", "", "")
 
     Ast(exprLetAst)
     // .withChildren(annotationsAst)
@@ -351,7 +405,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
   def astForExprLit(filename: String, parentFullname: String, litExprInstance: ExprLit): Ast = {
     val annotationsAst = litExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
 
-    val exprLitAst = NewLiteral()
+    val exprLitAst = literalNode(litExprInstance, "", "")
 
     Ast(exprLitAst)
       .withChildren(annotationsAst)
@@ -361,11 +415,10 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val annotationsAst = loopExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
     val labelAst = loopExprInstance.label.toList.flatMap(label => List(astForLabel(filename, parentFullname, label)))
     val bodyAst  = astForBlock(filename, parentFullname, loopExprInstance.body)
-    val loopAst = NewControlStructure()
-      .controlStructureType(ControlStructureTypes.DO)
-      .parserTypeName(classOf[ExprLoop].getSimpleName)
 
-    Ast(loopAst)
+    val loopNode = controlStructureNode(loopExprInstance, ControlStructureTypes.DO, "")
+
+    controlStructureAst(loopNode, None)
       .withChildren(annotationsAst)
       .withChildren(labelAst)
       .withChild(bodyAst)
@@ -382,13 +435,12 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val annotationsAst = matchExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
     val exprAst        = matchExprInstance.expr.toList.flatMap(expr => List(astForExpr(filename, parentFullname, expr)))
     val armsAst        = matchExprInstance.arms.map(astForArm(filename, parentFullname, _)).toList
-    val exprMatchAst = NewControlStructure()
-      .controlStructureType(ControlStructureTypes.MATCH)
-      .parserTypeName(classOf[ExprMatch].getSimpleName)
 
-    Ast(exprMatchAst)
+    val exprMatchAst = controlStructureNode(matchExprInstance, ControlStructureTypes.MATCH, "")
+
+    // controlStructureAst(exprMatchAst, exprAst.headOption)
+    controlStructureAst(exprMatchAst, None)
       .withChildren(annotationsAst)
-      .withChildren(exprAst)
       .withChildren(armsAst)
   }
 
@@ -402,15 +454,20 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     )
     val argsAst = methodCallExprInstance.args.map(astForExpr(filename, parentFullname, _)).toList
 
-    val exprMethodCallAst = NewCall()
-      .name(methodCallExprInstance.method)
-      .methodFullName(methodCallExprInstance.method)
+    val exprMethodCallAst = callNode(
+      methodCallExprInstance,
+      "",
+      methodCallExprInstance.method,
+      methodCallExprInstance.method,
+      DispatchTypes.STATIC_DISPATCH,
+      None,
+      None
+    )
 
-    Ast(exprMethodCallAst)
+    // callAst(exprMethodCallAst, argsAst, None, receiverAst.headOption)
+    callAst(exprMethodCallAst, Seq(), None, None)
       .withChildren(annotationsAst)
-      .withChildren(receiverAst)
       .withChildren(turbofishAst)
-      .withChildren(argsAst)
   }
 
   def astForExprParen(filename: String, parentFullname: String, parenExprInstance: ExprParen): Ast = {
@@ -429,7 +486,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val path        = Path(pathExprInstance.segments, pathExprInstance.leading_colon)
     val pathAst     = astForPath(filename, parentFullname, path)
     val qselfAst    = pathExprInstance.qself.toList.flatMap(qself => List(astForQself(filename, parentFullname, qself)))
-    val exprPathAst = NewTypeRef()
+    val exprPathAst = typeRefNode(pathExprInstance, "", "")
 
     Ast(exprPathAst)
     // .withChildren(annotationsAst)
@@ -458,7 +515,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val annotationsAst = referenceExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
 
     val exprAst = referenceExprInstance.expr.toList.flatMap(expr => List(astForExpr(filename, parentFullname, expr)))
-    val exprReferenceAst = NewTypeRef()
+    val exprReferenceAst = typeRefNode(referenceExprInstance, "", "")
 
     Ast(exprReferenceAst)
     // .withChildren(annotationsAst)
@@ -482,9 +539,11 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val annotationsAst = returnExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
 
     val exprAst       = returnExprInstance.expr.toList.flatMap(expr => List(astForExpr(filename, parentFullname, expr)))
-    val exprReturnAst = NewReturn()
+    val exprReturnAst = returnNode(returnExprInstance, "")
 
-    Ast(exprReturnAst).withChildren(annotationsAst).withChildren(exprAst)
+    returnAst(exprReturnAst)
+      .withChildren(annotationsAst)
+    // .withChildren(exprAst)
   }
 
   def astForExprStruct(filename: String, parentFullname: String, structExprInstance: ExprStruct): Ast = {
@@ -495,7 +554,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val fieldsAst = structExprInstance.fields.map(astForFieldValue(filename, parentFullname, _)).toList
     val restAst   = structExprInstance.rest.toList.flatMap(rest => List(astForExpr(filename, parentFullname, rest)))
 
-    val exprStructAst = NewLocal()
+    val exprStructAst = localNode(structExprInstance, "", "", "")
 
     Ast(exprStructAst)
     // .withChildren(annotationsAst)
@@ -509,21 +568,22 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val annotationsAst = tryExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
 
     val exprAst = tryExprInstance.expr.toList.flatMap(expr => List(astForExpr(filename, parentFullname, expr)))
-    val exprTryAst = NewControlStructure()
-      .controlStructureType(ControlStructureTypes.TRY)
-      .parserTypeName(classOf[ExprTry].getSimpleName)
 
-    Ast(exprTryAst).withChildren(annotationsAst).withChildren(exprAst)
+    val exprTryAst = controlStructureNode(tryExprInstance, ControlStructureTypes.THROW, "")
+
+    // controlStructureAst(exprTryAst, exprAst.headOption)
+    controlStructureAst(exprTryAst, None)
+      .withChildren(annotationsAst)
   }
 
   def astForExprTryBlock(filename: String, parentFullname: String, tryBlockExprInstance: ExprTryBlock): Ast = {
     val annotationsAst = tryBlockExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
 
-    val stmtsAst        = astForBlock(filename, parentFullname, tryBlockExprInstance.stmts)
-    val exprTryBlockAst = NewBlock()
+    val stmtsAst = astForBlock(filename, parentFullname, tryBlockExprInstance.stmts)
 
-    Ast(exprTryBlockAst)
-      .withChildren(annotationsAst)
+    val exprTryBlockAst = blockNode(tryBlockExprInstance)
+
+    blockAst(exprTryBlockAst, annotationsAst)
       .withChild(stmtsAst)
   }
 
@@ -543,16 +603,21 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val opAst        = unaryExprInstance.op.toList.flatMap(op => List(astForUnOp(filename, parentFullname, op)))
     val exprUnaryAst = NewUnknown()
 
-    Ast(exprUnaryAst).withChildren(annotationsAst).withChildren(exprAst).withChildren(opAst)
+    Ast(exprUnaryAst)
+      .withChildren(annotationsAst)
+      .withChildren(exprAst)
+      .withChildren(opAst)
   }
 
   def astForExprUnsafe(filename: String, parentFullname: String, unsafeExprInstance: ExprUnsafe): Ast = {
     val annotationsAst = unsafeExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
 
-    val stmtsAst      = astForBlock(filename, parentFullname, unsafeExprInstance.stmts)
-    val exprUnsafeAst = NewBlock()
+    val stmtsAst = astForBlock(filename, parentFullname, unsafeExprInstance.stmts)
 
-    Ast(exprUnsafeAst).withChildren(annotationsAst).withChild(stmtsAst)
+    val exprUnsafeBlockAst = blockNode(unsafeExprInstance)
+
+    blockAst(exprUnsafeBlockAst, annotationsAst)
+      .withChild(stmtsAst)
   }
 
   def astForExprWhile(filename: String, parentFullname: String, whileExprInstance: ExprWhile): Ast = {
@@ -560,25 +625,22 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
 
     val labelAst = whileExprInstance.label.toList.flatMap(label => List(astForLabel(filename, parentFullname, label)))
     val condAst  = whileExprInstance.cond.toList.flatMap(cond => List(astForExpr(filename, parentFullname, cond)))
-    val bodyAst  = astForBlock(filename, parentFullname, whileExprInstance.body)
-    val exprWhileAst = NewControlStructure()
-      .controlStructureType(ControlStructureTypes.WHILE)
-      .parserTypeName(classOf[ExprWhile].getSimpleName)
+    val bodyAst  = whileExprInstance.body.map(astForStmt(filename, parentFullname, _)).toList
 
-    Ast(exprWhileAst)
+    // whileAst(condAst.headOption, bodyAst)
+    whileAst(None, bodyAst)
       .withChildren(annotationsAst)
       .withChildren(labelAst)
-      .withChildren(condAst)
-      .withChild(bodyAst)
   }
 
   def astForExprYield(filename: String, parentFullname: String, yieldExprInstance: ExprYield): Ast = {
     val annotationsAst = yieldExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
 
     val exprAst      = yieldExprInstance.expr.toList.flatMap(expr => List(astForExpr(filename, parentFullname, expr)))
-    val exprYieldAst = NewReturn()
+    val exprYieldAst = returnNode(yieldExprInstance, "")
 
-    Ast(exprYieldAst).withChildren(annotationsAst).withChildren(exprAst)
+    returnAst(exprYieldAst).withChildren(annotationsAst)
+    // .withChildren(exprAst)
   }
 }
 

@@ -35,7 +35,7 @@ trait AstForFnArg(implicit schemaValidationMode: ValidationMode) { this: AstCrea
     parentFullname: String,
     patTypeInstance: PatType
   ): NewMethodParameterIn = {
-    NewMethodParameterIn()
+    parameterInNode(patTypeInstance, "", "", 0, false, EvaluationStrategies.BY_VALUE, "")
   }
 
   def parameterInForReceiver(
@@ -52,6 +52,6 @@ trait AstForFnArg(implicit schemaValidationMode: ValidationMode) { this: AstCrea
     val code = s"${if (isReference) "&" else ""}${if (isMut) "mut " else ""}self"
 
     // newThisParameterNode(name = "self", code = code, typeFullName = "Self", evaluationStrategy = evaluationStrategy)
-    NewMethodParameterIn()
+    parameterInNode(receiverInstance, "", "", 0, false, EvaluationStrategies.BY_VALUE, "")
   }
 }

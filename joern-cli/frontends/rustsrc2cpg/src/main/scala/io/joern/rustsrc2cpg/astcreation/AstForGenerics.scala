@@ -17,18 +17,16 @@ trait AstForGenerics(implicit schemaValidationMode: ValidationMode) { this: AstC
   def astForGenerics(filename: String, parentFullname: String, generics: Generics): Ast = {
     if (generics.params.isDefined) {
       val genericsAst = NewUnknown()
-      Ast(genericsAst).withChildren(
-        generics.params.get
-          .map(astForGenericParam(filename, parentFullname, _))
-          .toList
-      )
+      val genericParamsAsts = generics.params.get
+        .map(astForGenericParam(filename, parentFullname, _))
+        .toList
+      Ast(genericsAst).withChildren(genericParamsAsts)
     } else if (generics.whereClause.isDefined) {
       val genericsAst = NewUnknown()
-      Ast(genericsAst).withChildren(
-        generics.whereClause.get
-          .map(astForWherePredicate(filename, parentFullname, _))
-          .toList
-      )
+      val wherePredicatesAsts = generics.whereClause.get
+        .map(astForWherePredicate(filename, parentFullname, _))
+        .toList
+      Ast(genericsAst).withChildren(wherePredicatesAsts)
     } else {
       throw new RuntimeException(s"Unknown Generics type: $generics")
     }

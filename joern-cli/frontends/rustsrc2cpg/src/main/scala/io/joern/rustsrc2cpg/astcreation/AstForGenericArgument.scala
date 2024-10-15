@@ -35,8 +35,7 @@ trait AstForGenericArgument(implicit schemaValidationMode: ValidationMode) { thi
   }
 
   def astForLifetimeGenericArgument(filename: String, parentFullname: String, lifetimeInstance: Lifetime): Ast = {
-    val newTypeArgument = NewTypeArgument()
-    Ast(newTypeArgument)
+    astForLifetimeAsArgument(filename, parentFullname, lifetimeInstance)
   }
 
   def astForTypeGenericArgument(filename: String, parentFullname: String, typeInstance: Type): Ast = {

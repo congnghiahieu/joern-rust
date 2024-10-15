@@ -16,22 +16,23 @@ import scala.collection.mutable.ListBuffer
 
 trait AstForAttribute(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
   def astForAttribute(filename: String, parentFullname: String, attributeInstance: Attribute): Ast = {
-    // var style = attributeInstance.style.getOrElse(AttrStyle.Outer)
-    // val (attributeTypeFullname, input, attributeCode) = attributeInstance.meta match {
-    //   case Some(value) => {
-    //     val node = astForMeta(filename, parentFullname, value)
-    //     node
-    //   }
-    //   case None => ("", "", "")
-    // }
+    val (attributeName, attributeValue, attributeCode) = attributeInstance.meta match {
+      case Some(meta) => {
+        codeForMeta(filename, parentFullname, meta)
+      }
+      case None => ("", "", "")
+    }
+    var style = attributeInstance.style.getOrElse(AttrStyle.Outer)
+    val code = style match {
+      case AttrStyle.Outer => s"#[$attributeCode]"
+      case AttrStyle.Inner => s"#![$attributeCode]"
+    }
 
-    // val code = style match {
-    //   case AttrStyle.Outer => s"#[$attributeTypeFullname($input)]"
-    //   case AttrStyle.Inner => s"#![$attributeTypeFullname($input)]"
-    // }
-    // val node = annotationNode(attributeInstance, code, attributeTypeFullname, attributeTypeFullname)
-
-    val annotationNode = NewAnnotation()
-    Ast(annotationNode)
+    val metaAst = attributeInstance.meta match {
+      case Some(meta) => Seq(astForMeta(filename, parentFullname, meta))
+      case None       => Seq()
+    }
+    val node = annotationNode(attributeInstance, code, attributeName, attributeName)
+    annotationAst(node, metaAst)
   }
 }

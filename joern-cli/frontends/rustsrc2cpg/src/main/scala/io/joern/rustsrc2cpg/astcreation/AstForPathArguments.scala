@@ -18,7 +18,9 @@ trait AstForPathArguments(implicit schemaValidationMode: ValidationMode) { this:
   def astForPathArguments(filename: String, parentFullname: String, pathArgumentsInstance: PathArguments): Ast = {
     pathArgumentsInstance match {
       case pathArgumentsNone: PathArgumentsNone =>
-        val node = NewUnknown().code(pathArgumentsNone.toString)
+        val code         = pathArgumentsNone.toString
+        val typeFullname = pathArgumentsNone.toString
+        val node         = literalNode(EmptyAst(), code, typeFullname)
         Ast(node)
       case pathArgumentsNotNone: PathArgumentsNotNone =>
         astForPathArgumentsNotNone(filename, parentFullname, pathArgumentsNotNone)
@@ -44,7 +46,8 @@ trait AstForPathArguments(implicit schemaValidationMode: ValidationMode) { this:
     parentFullname: String,
     angleBracketedInstance: AngleBracketedGenericArguments
   ): Ast = {
-    val node = NewTypeArgument()
+    val code = codeForAngleBracketedGenericArguments(filename, parentFullname, angleBracketedInstance)
+    val node = NewTypeArgument().code(code)
     Ast(node)
   }
 
@@ -53,7 +56,8 @@ trait AstForPathArguments(implicit schemaValidationMode: ValidationMode) { this:
     parentFullname: String,
     parenthesizedInstance: ParenthesizedGenericArguments
   ): Ast = {
-    val node = NewTypeArgument()
+    val code = codeForParenthesizedGenericArguments(filename, parentFullname, parenthesizedInstance)
+    val node = NewTypeArgument().code(code)
     Ast(node)
   }
 }

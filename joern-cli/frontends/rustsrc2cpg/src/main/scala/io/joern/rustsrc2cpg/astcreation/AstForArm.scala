@@ -17,15 +17,26 @@ import scala.collection.mutable.ListBuffer
 
 trait AstForArm(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
   def astForArm(filename: String, parentFullname: String, arm: Arm): Ast = {
-    val armNode =
-      NewControlStructure().controlStructureType(ControlStructureTypes.MATCH).parserTypeName(classOf[Arm].getSimpleName)
+    val code    = ""
+    val armNode = controlStructureNode(arm, ControlStructureTypes.MATCH, code)
 
-    Ast(armNode)
+    var conditionAst = blockAst(blockNode(EmptyAst()))
+    conditionAst = arm.pat match {
+      case Some(pat) => conditionAst.withChild(astForPat(filename, armNode.parserTypeName, pat))
+      case None      => conditionAst
+    }
+    conditionAst = arm.guard match {
+      case Some(guard) => conditionAst.withChild(astForExpr(filename, armNode.parserTypeName, guard))
+      case None        => conditionAst
+    }
+    val bodyAst = arm.body.toList.map(astForExpr(filename, armNode.parserTypeName, _))
+
+    controlStructureAst(armNode, Some(conditionAst), bodyAst, false)
   }
 
   def astForLabel(filename: String, parentFullname: String, label: Label): Ast = {
-    val labelNode = NewJumpLabel()
-
+    val code      = s"'${label}:"
+    val labelNode = jumpTargetNode(EmptyAst(), label, code, Some(classOf[Label].getSimpleName))
     Ast(labelNode)
   }
 }

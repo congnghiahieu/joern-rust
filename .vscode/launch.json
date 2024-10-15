@@ -36,6 +36,17 @@
       ],
       "jvmOptions": [],
       "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "rustsrc2cpg Object Main Actix-Web",
+      "mainClass": "io.joern.rustsrc2cpg.Main",
+      "args": [
+        "/home/hieucien/Workspace/ast/rust-parser/parser/tests/projects/actix-web"
+      ],
+      "jvmOptions": [],
+      "env": {}
     }
   ]
 }

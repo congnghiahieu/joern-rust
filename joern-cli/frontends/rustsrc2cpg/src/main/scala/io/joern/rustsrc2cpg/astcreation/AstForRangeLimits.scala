@@ -16,7 +16,9 @@ import scala.collection.mutable.ListBuffer
 
 trait AstForRangeLimits(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
   def astForRangeLimits(filename: String, parentFullname: String, rangeLimitsIntance: RangeLimits): Ast = {
-    val rangeLimitsAst = NewLiteral().code(rangeLimitsIntance.toString)
-    Ast(rangeLimitsAst)
+    val code         = rangeLimitsIntance.toString
+    val typeFullname = rangeLimitsIntance.toString
+    val node         = literalNode(EmptyAst(), code, typeFullname)
+    Ast(node)
   }
 }

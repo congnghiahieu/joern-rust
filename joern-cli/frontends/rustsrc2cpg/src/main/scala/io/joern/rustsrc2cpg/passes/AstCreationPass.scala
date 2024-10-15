@@ -35,6 +35,7 @@ class AstCreationPass(
   report: Report = new Report()
 ) extends ConcurrentWriterCpgPass[Array[String]](cpg) {
 
+  private val inputRootPath = config.inputPath
   private val sourceFileExtension: Set[String]     = Set(".rs")
   private val DefaultIgnoredFolders: List[Regex]   = List()
   private val jsonParser: JsonParser               = new JsonParser()
@@ -46,7 +47,7 @@ class AstCreationPass(
     val cwd    = Paths.get(".").toAbsolutePath()
     val binary = cwd.resolve("bin/rust-parser/rust-parser")
     val command =
-      s"$binary --input ${config.inputPath} --output ${outputDirPath.toString} --stdout --json --cargo-toml"
+      s"$binary --input ${inputRootPath} --output ${outputDirPath.toString} --stdout --json --cargo-toml"
     val output = ExternalCommand.run(command, ".")
     // output.foreach(strs => strs.foreach(str => logger.warn("generateParts: {}", str)))
 
@@ -63,7 +64,7 @@ class AstCreationPass(
       traverse.remove(0)
     }
 
-    logger.info(s"[generateParts] [${config.inputPath.split("/").last}] collect.length: ${collect.length}")
+    logger.info(s"[generateParts] [${inputRootPath.split("/").last}] collect.length: ${collect.length}")
 
     val arr = collect.map(file => file.getAbsolutePath).toArray(classTag[String])
     Seq(arr).toArray
@@ -73,20 +74,19 @@ class AstCreationPass(
     var cargoFileNumber = 0;
     var rustFileNumber  = 0;
 
+
     fileNames.foreach(fileName => {
       logger.warn("runOnPart: {}", fileName)
 
-      val absPath = Paths.get(fileName).toAbsolutePath;
-      val relPath = SourceFiles.toRelativePath(absPath.toString, config.inputPath)
-      // val fileLOC = IOUtils.readLinesInFile(absPath).size
+      val absFilepath = Paths.get(fileName).toAbsolutePath;
+      val relFilepath = SourceFiles.toRelativePath(absFilepath.toString, inputRootPath)
 
-      if (!fileName.endsWith("Cargo.json")) {
+      if (!relFilepath.endsWith("Cargo.json")) {
         rustFileNumber += 1;
-        val parsedFile: FileAst = jsonParser.parse(fileName)
+        val parsedFileAst = jsonParser.parse(relFilepath)
         val (gotCpg, duration) = TimeUtils.time {
-
           val localDiff =
-            new AstCreator(parsedFile, fileName, cargoCrate, usedPrimitiveTypes)(config.schemaValidation).createAst()
+            new AstCreator(parsedFileAst, relFilepath, cargoCrate, usedPrimitiveTypes)(config.schemaValidation).createAst()
           builder.absorb(localDiff)
         }
       } else {

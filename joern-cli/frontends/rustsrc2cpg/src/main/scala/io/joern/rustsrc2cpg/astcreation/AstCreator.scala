@@ -20,11 +20,11 @@ import scala.language.postfixOps
 
 class AstCreator(
   rootNode: FileAst,
-  filename: String,
+  relFilepath: String,
   cargoCrate: CargoCrate,
   protected var usedPrimitiveTypes: util.Set[String]
 )(implicit val validationMode: ValidationMode)
-    extends AstCreatorBase(filename)
+    extends AstCreatorBase(relFilepath)
     with AstForAbi
     with AstForArm
     with AstForAttribute
@@ -43,6 +43,7 @@ class AstCreator(
     with AstForMacro
     with AstForMember
     with AstForPat
+    with CodeForPat
     with AstForOps
     with AstForMeta
     with CodeForMeta
@@ -81,20 +82,16 @@ class AstCreator(
   private def astForTranslationUnit(root: FileAst): Ast = {
     val parentFullname = ""
     val namespaceBlock = NewNamespaceBlock()
-      .name("\\")
+      .name(cargoCrate.moduleName)
       .fullName(cargoCrate.moduleName)
-      .filename("")
+      .filename(relFilepath)
     val namespaceAst = Ast(namespaceBlock)
 
     namespaceStack.push(namespaceAst.root.get)
-
-    val parentPath = Paths.get(cargoCrate.modulePath);
-    val childPath  = Paths.get("")
-    val filePath   = parentPath.relativize(childPath).toString
     scope.pushNewScope(namespaceBlock)
 
-    val annotationsAst = root.attrs.toList.flatMap(_.map(astForAttribute(filePath, parentFullname, _)))
-    val itemAst        = root.items.map(astForItem(filePath, parentFullname, _)).toList
+    val annotationsAst = root.attrs.toList.flatMap(_.map(astForAttribute(relFilepath, parentFullname, _)))
+    val itemAst        = root.items.map(astForItem(relFilepath, parentFullname, _)).toList
 
     scope.popScope()
     namespaceStack.pop()

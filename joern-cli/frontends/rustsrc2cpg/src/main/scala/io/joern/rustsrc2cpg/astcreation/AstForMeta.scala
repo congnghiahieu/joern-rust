@@ -36,8 +36,8 @@ trait AstForMeta(implicit schemaValidationMode: ValidationMode) { this: AstCreat
 
   def astForMetaList(filename: String, parentFullname: String, metaListInstance: MetaList): Ast = {
     val (typeFullname, inputToken, code) = codeForMetaList(filename, parentFullname, metaListInstance)
-    val parameter                        = NewAnnotationParameter().code(inputToken)
-    Ast(parameter)
+    val parameterAssignNode              = NewAnnotationParameterAssign().code(code)
+    annotationAssignmentAst(typeFullname, code, Ast(parameterAssignNode))
   }
 
   def astForMetaNameValue(filename: String, parentFullname: String, metaNameValueInstance: MetaNameValue): Ast = {
@@ -48,6 +48,18 @@ trait AstForMeta(implicit schemaValidationMode: ValidationMode) { this: AstCreat
 }
 
 trait CodeForMeta(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
+  def codeForMeta(filename: String, parentFullname: String, metaInstance: Meta): CodeForReturnType = {
+    if (metaInstance.path.isDefined) {
+      codeForPath(filename, parentFullname, metaInstance.path.get)
+    } else if (metaInstance.list.isDefined) {
+      codeForMetaList(filename, parentFullname, metaInstance.list.get)
+    } else if (metaInstance.nameValue.isDefined) {
+      codeForMetaNameValue(filename, parentFullname, metaInstance.nameValue.get)
+    } else {
+      throw new IllegalArgumentException("Unsupported meta type")
+    }
+  }
+
   def codeForPath(filename: String, parentFullname: String, pathInstance: Path): CodeForReturnType = {
     val typeFullname = typeFullnameForPath(filename, parentFullname, pathInstance)
     val code         = typeFullname
@@ -66,9 +78,9 @@ trait CodeForMeta(implicit schemaValidationMode: ValidationMode) { this: AstCrea
     val code = metaListInstance.delimiter match {
       case Some(delimiter) => {
         delimiter match {
-          case MacroDelimiter.Paren   => s"${inputToken}(${typeFullname})"
-          case MacroDelimiter.Brace   => s"${inputToken}{${typeFullname}}"
-          case MacroDelimiter.Bracket => s"${inputToken}[${typeFullname}]"
+          case MacroDelimiter.Paren   => s"${typeFullname}(${inputToken})"
+          case MacroDelimiter.Brace   => s"${typeFullname}{${inputToken}}"
+          case MacroDelimiter.Bracket => s"${typeFullname}[${inputToken}]"
         }
       }
       case None => s"${typeFullname}${inputToken}"

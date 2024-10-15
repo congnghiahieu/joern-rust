@@ -20,8 +20,7 @@ trait AstForTypeParamBound(implicit schemaValidationMode: ValidationMode) {
     if (typeParamBoundInstance.traitParamBound.isDefined) {
       return astForTraitBound(filename, parentFullname, typeParamBoundInstance.traitParamBound.get)
     } else if (typeParamBoundInstance.lifetimeParamBound.isDefined) {
-      val node = NewTypeArgument()
-      Ast(node)
+      return astForLifetimeAsParam(filename, parentFullname, typeParamBoundInstance.lifetimeParamBound.get)
     } else if (typeParamBoundInstance.verbatimParamBound.isDefined) {
       return astForTokenStream(filename, parentFullname, typeParamBoundInstance.verbatimParamBound.get)
     } else {

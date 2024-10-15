@@ -19,15 +19,11 @@ trait AstForType(implicit schemaValidationMode: ValidationMode) { this: AstCreat
   def astForType(filename: String, parentFullname: String, typeInstance: Type): Ast = {
     typeInstance match {
       case typeNoValue: TypeNoValue =>
-        astForTypeNoValue(filename, parentFullname, typeNoValue)
+        val node = typeRefNode(typeNoValue, typeNoValue.toString, typeNoValue.toString)
+        Ast(node)
       case typeHasValue: TypeHasValue =>
         astForTypeHasValue(filename, parentFullname, typeHasValue)
     }
-  }
-
-  def astForTypeNoValue(filename: String, parentFullname: String, typeNoValueInstance: TypeNoValue): Ast = {
-    val node = NewTypeRef().typeFullName(typeNoValueInstance.toString)
-    Ast(node)
   }
 
   def astForTypeHasValue(filename: String, parentFullname: String, typeHasValueInstance: TypeHasValue): Ast = {
@@ -64,73 +60,73 @@ trait AstForType(implicit schemaValidationMode: ValidationMode) { this: AstCreat
 
   def astForTypeArray(filename: String, parentFullname: String, typeArrayInstance: TypeArray): Ast = {
     val typeFullname = typeFullnameForTypeArray(filename, parentFullname, typeArrayInstance)
-    val node         = NewTypeRef().typeFullName(typeFullname)
+    val node         = typeRefNode(typeArrayInstance, typeFullname, typeFullname)
     Ast(node)
   }
 
   def astForTypeBareFn(filename: String, parentFullname: String, typeBareFnInstance: TypeBareFn): Ast = {
     val typeFullname = typeFullnameForTypeBareFn(filename, parentFullname, typeBareFnInstance)
-    val node         = NewTypeRef().typeFullName(typeFullname)
+    val node         = typeRefNode(typeBareFnInstance, typeFullname, typeFullname)
     Ast(node)
   }
 
   def astForTypeGroup(filename: String, parentFullname: String, typeGroupInstance: TypeGroup): Ast = {
     val typeFullname = typeFullnameForTypeGroup(filename, parentFullname, typeGroupInstance)
-    val node         = NewTypeRef().typeFullName(typeFullname)
+    val node         = typeRefNode(typeGroupInstance, typeFullname, typeFullname)
     Ast(node)
   }
 
   def astForTypeImplTrait(filename: String, parentFullname: String, typeImplTraitInstance: TypeImplTrait): Ast = {
     val typeFullname = typeFullnameForTypeImplTrait(filename, parentFullname, typeImplTraitInstance)
-    val node         = NewTypeRef().typeFullName(typeFullname)
+    val node         = typeRefNode(typeImplTraitInstance, typeFullname, typeFullname)
     Ast(node)
   }
 
   def astForTypeMacro(filename: String, parentFullname: String, typeMacroInstance: TypeMacro): Ast = {
     val typeFullname = typeFullnameForTypeMacro(filename, parentFullname, typeMacroInstance)
-    val node         = NewTypeRef().typeFullName(typeFullname)
+    val node         = typeRefNode(typeMacroInstance, typeFullname, typeFullname)
     Ast(node)
   }
 
   def astForTypeParen(filename: String, parentFullname: String, typeParenInstance: TypeParen): Ast = {
     val typeFullname = typeFullnameForTypeParen(filename, parentFullname, typeParenInstance)
-    val node         = NewTypeRef().typeFullName(typeFullname)
+    val node         = typeRefNode(typeParenInstance, typeFullname, typeFullname)
     Ast(node)
   }
 
   def astForTypePath(filename: String, parentFullname: String, typePathInstance: TypePath): Ast = {
     val typeFullname = typeFullnameForTypePath(filename, parentFullname, typePathInstance)
-    val node         = NewTypeRef().typeFullName(typeFullname)
+    val node         = typeRefNode(typePathInstance, typeFullname, typeFullname)
     Ast(node)
   }
 
   def astForTypePtr(filename: String, parentFullname: String, typePtrInstance: TypePtr): Ast = {
     val typeFullname = typeFullnameForTypePtr(filename, parentFullname, typePtrInstance)
-    val node         = NewTypeRef().typeFullName(typeFullname)
+    val node         = typeRefNode(typePtrInstance, typeFullname, typeFullname)
     Ast(node)
   }
 
   def astForTypeReference(filename: String, parentFullname: String, typeReferenceInstance: TypeReference): Ast = {
     val typeFullname = typeFullnameForTypeReference(filename, parentFullname, typeReferenceInstance)
-    val node         = NewTypeRef().typeFullName(typeFullname)
+    val node         = typeRefNode(typeReferenceInstance, typeFullname, typeFullname)
     Ast(node)
   }
 
   def astForTypeSlice(filename: String, parentFullname: String, typeSliceInstance: TypeSlice): Ast = {
     val typeFullname = typeFullnameForTypeSlice(filename, parentFullname, typeSliceInstance)
-    val node         = NewTypeRef().typeFullName(typeFullname)
+    val node         = typeRefNode(typeSliceInstance, typeFullname, typeFullname)
     Ast(node)
   }
 
   def astForTypeTraitObject(filename: String, parentFullname: String, typeTraitObjectInstance: TypeTraitObject): Ast = {
     val typeFullname = typeFullnameForTypeTraitObject(filename, parentFullname, typeTraitObjectInstance)
-    val node         = NewTypeRef().typeFullName(typeFullname)
+    val node         = typeRefNode(typeTraitObjectInstance, typeFullname, typeFullname)
     Ast(node)
   }
 
   def astForTypeTuple(filename: String, parentFullname: String, typeTupleInstance: TypeTuple): Ast = {
     val typeFullname = typeFullnameForTypeTuple(filename, parentFullname, typeTupleInstance)
-    val node         = NewTypeRef().typeFullName(typeFullname)
+    val node         = typeRefNode(typeTupleInstance, typeFullname, typeFullname)
     Ast(node)
   }
 }

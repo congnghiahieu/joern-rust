@@ -26,11 +26,11 @@ trait AstForFn(implicit schemaValidationMode: ValidationMode) { this: AstCreator
   }
 
   def astForVariadic(filename: String, parentFullname: String, variadicInstance: Variadic): Ast = {
-    val node = NewMethodParameterIn()
+    val node = parameterInNode(variadicInstance, "", "", 0, false, EvaluationStrategies.BY_VALUE, "")
     Ast(node)
   }
   def astForVariant(filename: String, parentFullname: String, variantInstance: Variant): Ast = {
-    val node = NewMember()
+    val node = memberNode(variantInstance, "", "", "")
     Ast(node)
   }
 }

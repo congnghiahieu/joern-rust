@@ -18,7 +18,7 @@ trait AstForUseTree(implicit schemaValidationMode: ValidationMode) { this: AstCr
   def astForUseTree(filename: String, parentFullname: String, useTreeInstance: UseTree): Ast = {
     useTreeInstance match {
       case glob: UseTreeGlob => {
-        val node = NewImport()
+        val node = newImportNode(glob.toString, glob.toString, glob.toString, glob).isWildcard(true)
         Ast(node)
       }
       case notGlob: UseTreeNotGlob =>
@@ -37,24 +37,24 @@ trait AstForUseTree(implicit schemaValidationMode: ValidationMode) { this: AstCr
   }
 
   private def astForUsePath(filename: String, parentFullname: String, usePathInstance: UsePath): Ast = {
-    val node = NewImport()
+    val node = newImportNode("", "", "", usePathInstance).isExplicit(true)
     Ast(node)
   }
 
   private def astForUseName(filename: String, parentFullname: String, ident: Ident): Ast = {
-    val node = NewImport()
-      .importedEntity(ident)
-      .importedAs(ident)
+    val node = newImportNode("", ident, ident, EmptyAst()).isExplicit(true)
     Ast(node)
   }
 
   private def astForUseRename(filename: String, parentFullname: String, useRenameInstance: UseRename): Ast = {
-    val node = NewImport()
+    val node = newImportNode("", useRenameInstance.ident, useRenameInstance.rename, useRenameInstance)
+      .isExplicit(true)
+      .explicitAs(true)
     Ast(node)
   }
 
   private def astForUseGroup(filename: String, parentFullname: String, useGroupInstance: UseGroup): Ast = {
-    val node = NewImport()
+    val node = newImportNode("", "", "", EmptyAst()).isExplicit(true)
     Ast(node)
   }
 }

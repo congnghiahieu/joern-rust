@@ -43,8 +43,8 @@ class JsonParser {
   def parse(filepath: String): FileAst = {
     val fileContent = IOUtils.readEntireFile(Paths.get(filepath))
     val fileAst     = objectMapper.readValue(fileContent, classOf[FileAst])
-    mapParent(Some(fileAst), None)
     fileAst
+    // mapParent(Some(fileAst), None)
   }
 
   private def mapParentForItem(itemInstance: Item, parent: Option[RustAst]): Unit = {

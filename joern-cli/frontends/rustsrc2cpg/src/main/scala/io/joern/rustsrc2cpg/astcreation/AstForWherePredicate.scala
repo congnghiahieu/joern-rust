@@ -30,8 +30,11 @@ trait AstForWherePredicate(implicit schemaValidationMode: ValidationMode) { this
     parentFullname: String,
     lifetimeWherePredicateInstance: PredicateLifetime
   ): Ast = {
-    val node = NewTypeParameter()
-    Ast(node)
+    val lifetimePredicateAst = astForLifetimeAsParam(filename, parentFullname, lifetimeWherePredicateInstance.lifetime)
+    val boundsAst = lifetimeWherePredicateInstance.bounds.map(astForLifetimeAsParam(filename, parentFullname, _))
+
+    lifetimePredicateAst
+    // .withChildren(boundsAst)
   }
 
   def astForTypeWherePredicate(
@@ -43,9 +46,15 @@ trait AstForWherePredicate(implicit schemaValidationMode: ValidationMode) { this
     Ast(node)
   }
 
-  def astForLifetime(filename: String, parentFullname: String, lifetimeInstance: Lifetime): Ast = {
-    // val node = NewTypeArgument()
-    val node = NewTypeParameter()
+  def astForLifetimeAsParam(filename: String, parentFullname: String, lifetimeInstance: Lifetime): Ast = {
+    val code = codeForLifetime(filename, parentFullname, lifetimeInstance)
+    val node = NewTypeParameter().name(lifetimeInstance).code(code)
+    Ast(node)
+  }
+
+  def astForLifetimeAsArgument(filename: String, parentFullname: String, lifetimeInstance: Lifetime): Ast = {
+    val code = codeForLifetime(filename, parentFullname, lifetimeInstance)
+    val node = NewTypeArgument().code(code)
     Ast(node)
   }
 

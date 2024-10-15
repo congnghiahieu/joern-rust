@@ -35,17 +35,17 @@ trait AstForFields(implicit schemaValidationMode: ValidationMode) { this: AstCre
   }
 
   def astForFieldPat(filename: String, parentFullname: String, fieldPatInstance: FieldPat): Ast = {
-    val memberNode = NewMember()
-    Ast(memberNode)
+    val node = memberNode(fieldPatInstance, "", "", "")
+    Ast(node)
   }
 
   def astForFieldValue(filename: String, parentFullname: String, fieldValueInstance: FieldValue): Ast = {
-    val memberNode = NewMember()
-    Ast(memberNode)
+    val node = memberNode(fieldValueInstance, "", "", "")
+    Ast(node)
   }
 
   def astForField(filename: String, parentFullname: String, fieldInstance: Field): Ast = {
-    val memberNode = NewMember()
-    Ast(memberNode)
+    val node = memberNode(fieldInstance, "", "", "")
+    Ast(node)
   }
 }

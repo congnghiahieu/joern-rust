@@ -16,12 +16,16 @@ import scala.collection.mutable.ListBuffer
 
 trait AstForOps(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
   def astForBinOp(filename: String, parentFullname: String, binOpInstance: BinOp): Ast = {
-    val binOpAst = NewLiteral().code(binOpInstance.toString)
+    val code         = binOpInstance.toString
+    val typeFullname = binOpInstance.toString
+    val binOpAst     = literalNode(EmptyAst(), code, typeFullname)
     Ast(binOpAst)
   }
 
   def astForUnOp(filename: String, parentFullname: String, unOpInstance: UnOp): Ast = {
-    val unOpAst = NewLiteral().code(unOpInstance.toString)
+    val code         = unOpInstance.toString
+    val typeFullname = unOpInstance.toString
+    val unOpAst      = literalNode(EmptyAst(), code, typeFullname)
     Ast(unOpAst)
   }
 }
