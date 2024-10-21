@@ -114,8 +114,8 @@ class Variadic extends RustAst {
 }
 
 class Variant extends RustAst {
-  var attrs: ListBuffer[Attribute] = ListBuffer.empty
-  var ident: Ident                 = ""
-  var fields: Option[Fields]       = None
-  var discriminant: Option[Expr]   = None
+  var attrs: Option[ListBuffer[Attribute]] = None
+  var ident: Ident                         = ""
+  var fields: Option[Fields]               = None
+  var discriminant: Option[Expr]           = None
 }

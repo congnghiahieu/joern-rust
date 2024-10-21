@@ -18,7 +18,7 @@ import scala.collection.mutable.ListBuffer
 trait AstForMember(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
   def astForMember(filename: String, parentFullname: String, member: Member): Ast = {
     if (member.named.isDefined) {
-      val identNode = identifierNode(EmptyAst(), member.named.get, member.named.get, member.named.get)
+      val identNode = fieldIdentifierNode(EmptyAst(), member.named.get, member.named.get)
       Ast(identNode)
     } else if (member.unnamed.isDefined) {
       val indexNode = fieldIdentifierNode(EmptyAst(), member.unnamed.get.toString, member.unnamed.get.toString)

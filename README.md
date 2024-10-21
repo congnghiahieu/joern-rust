@@ -241,11 +241,29 @@ For each function, generate the missing code:
 - return `Ast(node)`
 - see function `astForTypeArray` for example
 
-Dump intermediate graph representations (or entire graph) of code in a given export format
-Usage: joern-export [options] [cpg]
+- Convert all code using `.toList.flatMap(_.map)` to using `match`
 
---help
-cpg input CPG file name - defaults to `cpg.bin`
--o, --out <value> output directory - will be created and must not yet exist
---repr <value> representation to extract: [all|ast|cdg|cfg|cpg|cpg14|ddg|pdg] - defaults to `Cpg14`
---format <value> export format, one of [dot|graphml|graphson|neo4jcsv] - defaults to `Dot`
+For example from this:
+`val annotationsAst = arrayExprInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))`
+
+Convert to:
+`val annotationsAst = arrayExprInstance.attrs match {
+case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, \_)).toList
+case None => List()
+}`
+
+add annotationsAst vairable for all of these
+
+For example:
+
+`val annotationsAst = arrayExprInstance.attrs match {
+case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+case None => List()
+}`
+
+Combile with return Ast, for example
+
+controlStructureAst(armNode, Some(conditionAst), bodyAst)
+.withChildren(annotationsAst)
+
+move `val annotationsAst` to head of function body

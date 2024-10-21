@@ -19,25 +19,25 @@ trait AstForAbi(implicit schemaValidationMode: ValidationMode) { this: AstCreato
 
   def astForAbi(filename: String, parentFullname: String, abi: Abi): Ast = {
     val abiName = nameForAbi(filename, parentFullname, Some(abi))
+    val code    = s"extern \"${abiName}\" { }"
 
-    val code = s"extern \"${abiName}\" { }"
     val abiNamespace = NewNamespaceBlock()
       .name(abiName)
       .fullName(abiName)
       .filename(filename)
       .code(code)
-
     Ast(abiNamespace)
   }
 
   def nameForAbi(filename: String, parentFullname: String, abi: Option[Abi]): String = {
     abi match {
-      case None => DEFAULT_ABI_NAME
-      case Some(abi) =>
+      case Some(abi) => {
         abi.name match {
-          case None       => DEFAULT_ABI_NAME
           case Some(name) => name
+          case None       => DEFAULT_ABI_NAME
         }
+      }
+      case None => DEFAULT_ABI_NAME
     }
   }
 }

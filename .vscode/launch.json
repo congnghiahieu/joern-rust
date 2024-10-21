@@ -10,7 +10,7 @@
       "name": "gosrc2cpg Object Main",
       "mainClass": "io.joern.gosrc2cpg.Main",
       "args": [
-        "/home/hieucien/Workspace/ast/go-parser/parser/tests"
+        "/home/hieucien/Workspace/ast/joern-rust/gin"
       ],
       "jvmOptions": [],
       "env": {}

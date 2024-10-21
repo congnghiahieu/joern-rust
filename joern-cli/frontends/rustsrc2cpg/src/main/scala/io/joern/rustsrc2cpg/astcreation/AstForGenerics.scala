@@ -16,17 +16,18 @@ import scala.collection.mutable.ListBuffer
 trait AstForGenerics(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
   def astForGenerics(filename: String, parentFullname: String, generics: Generics): Ast = {
     if (generics.params.isDefined) {
-      val genericsAst = NewUnknown()
+      val genericsNode = unknownNode(EmptyAst(), "")
       val genericParamsAsts = generics.params.get
         .map(astForGenericParam(filename, parentFullname, _))
         .toList
-      Ast(genericsAst).withChildren(genericParamsAsts)
+      Ast(genericsNode).withChildren(genericParamsAsts)
     } else if (generics.whereClause.isDefined) {
-      val genericsAst = NewUnknown()
+      val genericsNode = unknownNode(EmptyAst(), "")
       val wherePredicatesAsts = generics.whereClause.get
         .map(astForWherePredicate(filename, parentFullname, _))
         .toList
-      Ast(genericsAst).withChildren(wherePredicatesAsts)
+      Ast(genericsNode).withChildren(wherePredicatesAsts)
+
     } else {
       throw new RuntimeException(s"Unknown Generics type: $generics")
     }

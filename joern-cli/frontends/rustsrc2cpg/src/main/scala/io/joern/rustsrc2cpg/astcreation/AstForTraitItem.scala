@@ -32,7 +32,10 @@ trait AstForTraitItem(implicit schemaValidationMode: ValidationMode) { this: Ast
   }
 
   def astForTraitItemConst(filename: String, parentFullname: String, traitItemConst: TraitItemConst): Ast = {
-    val annotationsAst = traitItemConst.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
+    val annotationsAst = traitItemConst.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
 
     val code = ""
     val typeFullName = traitItemConst.ty match {
@@ -41,11 +44,18 @@ trait AstForTraitItem(implicit schemaValidationMode: ValidationMode) { this: Ast
     }
     val newLocal = localNode(traitItemConst, traitItemConst.ident, code, typeFullName)
 
-    Ast(newLocal)
+    Ast(memberNode(EmptyAst(), "", "", ""))
+      .withChild(
+        Ast(newLocal)
+        // .withChildren(annotationsAst)
+      )
   }
 
   def astForTraitItemFn(filename: String, parentFullname: String, traitItemFn: TraitItemFn): Ast = {
-    val annotationsAst = traitItemFn.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
+    val annotationsAst = traitItemFn.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
 
     val bodyAst       = blockAst(blockNode(traitItemFn, "", filename))
     val newMethodNode = methodNode(traitItemFn, traitItemFn.ident, traitItemFn.ident, "", filename)
@@ -54,22 +64,42 @@ trait AstForTraitItem(implicit schemaValidationMode: ValidationMode) { this: Ast
       case Some(output) => typeFullnameForType(filename, parentFullname, output)
       case None         => ""
     }
-    val methodRetNode = methodReturnNode(traitItemFn, methodReturnTypeFullname)
 
-    methodAstWithAnnotations(newMethodNode, parameterIns, bodyAst, methodRetNode, Nil, annotationsAst)
+    val methodRetNode = methodReturnNode(traitItemFn, methodReturnTypeFullname)
+    val methodAst =
+      methodAstWithAnnotations(newMethodNode, parameterIns, bodyAst, methodRetNode, Nil, annotationsAst)
+
+    Ast(memberNode(EmptyAst(), "", "", ""))
+      .withChild(methodAst)
   }
 
   def astForTraitItemType(filename: String, parentFullname: String, traitItemType: TraitItemType): Ast = {
+    val annotationsAst = traitItemType.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
     val code        = ""
     val newTypeDecl = typeDeclNode(traitItemType, traitItemType.ident, traitItemType.ident, filename, code)
-    Ast(newTypeDecl)
+    Ast(memberNode(EmptyAst(), "", "", ""))
+      .withChild(
+        Ast(newTypeDecl)
+          .withChildren(annotationsAst)
+      )
+
   }
 
   def astForTraitItemMacro(filename: String, parentFullname: String, traitItemMacro: TraitItemMacro): Ast = {
-    val annotationsAst = traitItemMacro.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
+    val annotationsAst = traitItemMacro.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
     val macroInstance =
       Macro(traitItemMacro.path, traitItemMacro.delimiter, traitItemMacro.tokens)
+    val macroAst = astForMacro(filename, parentFullname, macroInstance).withChildren(annotationsAst)
 
-    astForMacro(filename, parentFullname, macroInstance).withChildren(annotationsAst)
+    Ast(memberNode(EmptyAst(), "", "", ""))
+      .withChild(macroAst)
   }
 }

@@ -25,33 +25,51 @@ trait AstForGenericParam(implicit schemaValidationMode: ValidationMode) { this: 
       throw new IllegalArgumentException("Unsupported generic param type")
     }
   }
-
   def astForLifetimeGenericParam(
     filename: String,
     parentFullname: String,
     lifetimeParamInstance: LifetimeParam
   ): Ast = {
+    val annotationsAst = lifetimeParamInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
     val lifetimePredicateAst = astForLifetimeAsParam(filename, parentFullname, lifetimeParamInstance.lifetime)
     val boundsAst            = lifetimeParamInstance.bounds.map(astForLifetimeAsParam(filename, parentFullname, _))
 
-    lifetimePredicateAst
-    // .withChildren(boundsAst)
+    Ast(unknownNode(EmptyAst(), ""))
+      .withChild(lifetimePredicateAst)
+      .withChildren(boundsAst)
+      .withChildren(annotationsAst)
   }
 
   def astForTypeGenericParam(filename: String, parentFullname: String, typeParamInstance: TypeParam): Ast = {
+    val annotationsAst = typeParamInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
     val typeParameterNode = NewTypeParameter().name(typeParamInstance.ident)
     val boundsAst         = typeParamInstance.bounds.map(astForTypeParamBound(filename, parentFullname, _))
-    Ast(typeParameterNode)
-    // .withChildren(boundsAst)
+
+    Ast(unknownNode(EmptyAst(), ""))
+      .withChild(Ast(typeParameterNode))
+      .withChildren(boundsAst)
+      .withChildren(annotationsAst)
   }
 
   def astForConstGenericParam(filename: String, parentFullname: String, constParamInstance: ConstParam): Ast = {
+    val annotationsAst = constParamInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
     val typeFullname = constParamInstance.ty match {
       case Some(ty) => typeFullnameForType(filename, parentFullname, ty)
       case None     => ""
     }
     val typeParameterNode = NewTypeParameter().name(constParamInstance.ident)
 
-    Ast(typeParameterNode)
+    Ast(unknownNode(EmptyAst(), ""))
+      .withChild(Ast(typeParameterNode))
+      .withChildren(annotationsAst)
   }
 }

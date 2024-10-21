@@ -100,5 +100,5 @@ type LitByte    = String
 type LitChar    = String
 type LitInt     = String
 type LitFloat   = String
-type LitBool    = Boolean
+type LitBool    = String
 type Literal    = String;

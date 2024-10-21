@@ -19,33 +19,44 @@ trait AstForFields(implicit schemaValidationMode: ValidationMode) { this: AstCre
     fieldsInstance match {
       case fieldsNotUnit: FieldsNotUnit =>
         if (fieldsNotUnit.named.isDefined) {
-          val fieldsNotUnitAst = NewUnknown()
+          val fieldsNotUnitAst = unknownNode(EmptyAst(), "")
           val fieldsAst        = fieldsNotUnit.named.get.map(astForField(filename, parentFullname, _))
           Ast(fieldsNotUnitAst).withChildren(fieldsAst)
         } else {
-          val fieldsNotUnitAst = NewUnknown()
+          val fieldsNotUnitAst = unknownNode(EmptyAst(), "")
           val fieldsAst        = fieldsNotUnit.unnamed.get.map(astForField(filename, parentFullname, _))
           Ast(fieldsNotUnitAst).withChildren(fieldsAst)
         }
       case fieldsUnit: FieldsUnit =>
-        val fieldsNotUnitAst = NewUnknown()
-          .code(fieldsUnit.toString)
+        val fieldsNotUnitAst = unknownNode(fieldsUnit, fieldsUnit.toString)
         Ast(fieldsNotUnitAst)
     }
   }
 
   def astForFieldPat(filename: String, parentFullname: String, fieldPatInstance: FieldPat): Ast = {
+    val annotationsAst = fieldPatInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
     val node = memberNode(fieldPatInstance, "", "", "")
-    Ast(node)
+    Ast(node).withChildren(annotationsAst)
   }
 
   def astForFieldValue(filename: String, parentFullname: String, fieldValueInstance: FieldValue): Ast = {
+    val annotationsAst = fieldValueInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
     val node = memberNode(fieldValueInstance, "", "", "")
-    Ast(node)
+    Ast(node).withChildren(annotationsAst)
   }
 
   def astForField(filename: String, parentFullname: String, fieldInstance: Field): Ast = {
+    val annotationsAst = fieldInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
     val node = memberNode(fieldInstance, "", "", "")
-    Ast(node)
+    Ast(node).withChildren(annotationsAst)
   }
 }

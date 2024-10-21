@@ -17,26 +17,32 @@ import scala.collection.mutable.ListBuffer
 
 trait AstForArm(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
   def astForArm(filename: String, parentFullname: String, arm: Arm): Ast = {
+    val annotationsAst = arm.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
     val code    = ""
     val armNode = controlStructureNode(arm, ControlStructureTypes.MATCH, code)
 
-    var conditionAst = blockAst(blockNode(EmptyAst()))
-    conditionAst = arm.pat match {
-      case Some(pat) => conditionAst.withChild(astForPat(filename, armNode.parserTypeName, pat))
-      case None      => conditionAst
+    val patAst = arm.pat match {
+      case Some(pat) => astForPat(filename, armNode.parserTypeName, pat)
+      case None      => Ast()
     }
-    conditionAst = arm.guard match {
-      case Some(guard) => conditionAst.withChild(astForExpr(filename, armNode.parserTypeName, guard))
-      case None        => conditionAst
+    val guardAst = arm.guard match {
+      case Some(guard) => astForExpr(filename, armNode.parserTypeName, guard)
+      case None        => Ast()
     }
-    val bodyAst = arm.body.toList.map(astForExpr(filename, armNode.parserTypeName, _))
+    var conditionAst = blockAst(blockNode(EmptyAst()), List(patAst, guardAst))
+    val bodyAst      = arm.body.toList.map(astForExpr(filename, armNode.parserTypeName, _))
 
-    controlStructureAst(armNode, Some(conditionAst), bodyAst, false)
+    controlStructureAst(armNode, Some(conditionAst), bodyAst)
+      .withChildren(annotationsAst)
   }
 
   def astForLabel(filename: String, parentFullname: String, label: Label): Ast = {
     val code      = s"'${label}:"
-    val labelNode = jumpTargetNode(EmptyAst(), label, code, Some(classOf[Label].getSimpleName))
+    val labelNode = jumpTargetNode(EmptyAst(), label, code)
     Ast(labelNode)
   }
 }

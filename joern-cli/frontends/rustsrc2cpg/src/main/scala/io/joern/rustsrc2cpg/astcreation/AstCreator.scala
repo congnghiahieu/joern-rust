@@ -40,6 +40,7 @@ class AstCreator(
     with AstForGenerics
     with AstForImplItem
     with AstForItem
+    with AstForLit
     with AstForMacro
     with AstForMember
     with AstForPat
@@ -90,8 +91,11 @@ class AstCreator(
     namespaceStack.push(namespaceAst.root.get)
     scope.pushNewScope(namespaceBlock)
 
-    val annotationsAst = root.attrs.toList.flatMap(_.map(astForAttribute(relFilepath, parentFullname, _)))
-    val itemAst        = root.items.map(astForItem(relFilepath, parentFullname, _)).toList
+    val annotationsAst = root.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(relFilepath, parentFullname, _)).toList
+      case None        => List()
+    }
+    val itemAst = root.items.map(astForItem(relFilepath, parentFullname, _)).toList
 
     scope.popScope()
     namespaceStack.pop()

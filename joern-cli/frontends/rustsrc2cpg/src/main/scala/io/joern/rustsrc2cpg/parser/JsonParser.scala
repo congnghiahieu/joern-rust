@@ -29,7 +29,7 @@ class JsonParser {
     .configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, true)
     .configure(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES, true)
     .configure(DeserializationFeature.FAIL_ON_UNRESOLVED_OBJECT_IDS, true)
-    // .configure(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES, true)
+  // .configure(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES, true)
 
   // Register custom deserializer
   customDeserializerModule.addDeserializer(classOf[Type], new TypeDeserializer)
@@ -1607,9 +1607,11 @@ class JsonParser {
       }
 
       case variant: Variant => {
-        variant.attrs.foreach(attr => {
-          mapParent(Some(attr), Some(variant))
-        })
+        if (variant.attrs.isDefined) {
+          variant.attrs.get.foreach(attr => {
+            mapParent(Some(attr), Some(variant))
+          })
+        }
         if (variant.fields.isDefined) {
           mapParentForFields(variant.fields.get, Some(variant))
         }

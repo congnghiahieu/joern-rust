@@ -17,41 +17,44 @@ import scala.collection.mutable.ListBuffer
 trait AstForFnArg(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
 
   def astForFnArg(filename: String, parentFullname: String, fnArg: FnArg): Ast = {
-    Ast(parameterInForFnArg(filename, parentFullname, fnArg))
-  }
-
-  def parameterInForFnArg(filename: String, parentFullname: String, fnArg: FnArg): NewMethodParameterIn = {
     if (fnArg.receiverFnArg.isDefined) {
-      return parameterInForReceiver(filename, parentFullname, fnArg.receiverFnArg.get)
+      return astForReceiver(filename, parentFullname, fnArg.receiverFnArg.get)
     } else if (fnArg.typedFnArg.isDefined) {
-      return parameterInForPatType(filename, parentFullname, fnArg.typedFnArg.get)
+      return astForFnArgPatType(filename, parentFullname, fnArg.typedFnArg.get)
     } else {
       throw new RuntimeException(s"Unknown fnArg type: $fnArg")
     }
   }
 
-  def parameterInForPatType(
-    filename: String,
-    parentFullname: String,
-    patTypeInstance: PatType
-  ): NewMethodParameterIn = {
-    parameterInNode(patTypeInstance, "", "", 0, false, EvaluationStrategies.BY_VALUE, "")
+  def astForFnArgPatType(filename: String, parentFullname: String, patTypeInstance: PatType): Ast = {
+    val node = parameterInNode(patTypeInstance, "", "", 0, false, EvaluationStrategies.BY_VALUE, "")
+    Ast(node)
   }
 
-  def parameterInForReceiver(
-    filename: String,
-    parentFullname: String,
-    receiverInstance: Receiver
-  ): NewMethodParameterIn = {
+  def astForReceiver(filename: String, parentFullname: String, receiverInstance: Receiver): Ast = {
+    val node = parameterInNode(receiverInstance, "", "", 0, false, EvaluationStrategies.BY_VALUE, "")
+    val annotationsAst = receiverInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    Ast(node).withChildren(annotationsAst)
+  }
 
-    val isMut       = receiverInstance.mut.isDefined && receiverInstance.mut.get
-    val isReference = receiverInstance.ref.isDefined && receiverInstance.ref.get
-    val evaluationStrategy = if (isMut) { EvaluationStrategies.BY_REFERENCE }
-    else { EvaluationStrategies.BY_VALUE }
+  def astForBareFnArg(filename: String, parentFullname: String, bareFnArgInstance: BareFnArg): Ast = {
+    val annotationsAst = bareFnArgInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val node = parameterInNode(bareFnArgInstance, "", "", 0, false, EvaluationStrategies.BY_VALUE, "")
+    Ast(node).withChildren(annotationsAst)
+  }
 
-    val code = s"${if (isReference) "&" else ""}${if (isMut) "mut " else ""}self"
-
-    // newThisParameterNode(name = "self", code = code, typeFullName = "Self", evaluationStrategy = evaluationStrategy)
-    parameterInNode(receiverInstance, "", "", 0, false, EvaluationStrategies.BY_VALUE, "")
+  def astForBareVariadic(filename: String, parentFullname: String, bareVariadicInstance: BareVariadic): Ast = {
+    val annotationsAst = bareVariadicInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val node = parameterInNode(bareVariadicInstance, "", "", 0, false, EvaluationStrategies.BY_VALUE, "")
+    Ast(node).withChildren(annotationsAst)
   }
 }

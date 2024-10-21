@@ -335,12 +335,20 @@
 
 ## Error
 
-- Exception in thread "Writer" java.lang.RuntimeException: Edge with type='ARGUMENT' with direction='IN' not supported by nodeType='ARRAY_INITIALIZER'
-
 - Exception in thread "Writer" java.lang.RuntimeException: Edge with type='CONDITION' with direction='IN' not supported by nodeType='LOCAL'
+
+- Exception in thread "Writer" java.lang.RuntimeException: Edge with type='CONDITION' with direction='IN' not supported by nodeType='ARRAY_INITIALIZER'
+
+- Exception in thread "Writer" java.lang.RuntimeException: Edge with type='CONDITION' with direction='IN' not supported by nodeType='FIELD_IDENTIFIER'
 
 - Exception in thread "Writer" java.lang.RuntimeException: Edge with type='RECEIVER' with direction='IN' not supported by nodeType='FIELD_IDENTIFIER'
 
+- Exception in thread "Writer" java.lang.RuntimeException: Edge with type='RECEIVER' with direction='IN' not supported by nodeType='LOCAL'
+
 - Exception in thread "Writer" java.lang.RuntimeException: Edge with type='AST' with direction='OUT' not supported by nodeType='TYPE_PARAMETER'
 
-- Exception in thread "Writer" java.lang.RuntimeException: Edge with type='RECEIVER' with direction='IN' not supported by nodeType='LOCAL'
+- Exception in thread "Writer" java.lang.RuntimeException: Edge with type='AST' with direction='OUT' not supported by nodeType='TYPE_REF'
+
+- Exception in thread "Writer" java.lang.RuntimeException: Edge with type='ARGUMENT' with direction='IN' not supported by nodeType='ARRAY_INITIALIZER'
+
+- Exception in thread "Writer" java.lang.RuntimeException: Edge with type='ARGUMENT' with direction='IN' not supported by nodeType='METHOD'

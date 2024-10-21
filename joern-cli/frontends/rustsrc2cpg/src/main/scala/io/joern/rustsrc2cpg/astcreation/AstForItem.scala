@@ -65,10 +65,11 @@ trait AstForItem(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val code         = s"const ${itemConst.ident}: ${typeFullName}"
     val newLocalNode = localNode(itemConst, itemConst.ident, code, typeFullName)
 
-    Ast(newLocalNode)
-    // .withChild(Ast(modifierNode))
-    // .withChildren(annotationsAst)
-    // .withChildren(genericsAst)
+    Ast(unknownNode(EmptyAst(), ""))
+      .withChild(Ast(newLocalNode))
+      .withChild(Ast(modifierNode))
+      .withChildren(annotationsAst)
+      .withChildren(genericsAst)
   }
 
   def astForItemEnum(filename: String, parentFullname: String, itemEnum: ItemEnum): Ast = {
@@ -220,9 +221,10 @@ trait AstForItem(implicit schemaValidationMode: ValidationMode) { this: AstCreat
 
     val newLocalNode = localNode(itemStatic, itemStatic.ident, code, typeFullname)
 
-    Ast(newLocalNode)
-    // .withChild(Ast(modifierNode))
-    // .withChildren(annotationsAst)
+    Ast(unknownNode(EmptyAst(), ""))
+      .withChild(Ast(newLocalNode))
+      .withChild(Ast(modifierNode))
+      .withChildren(annotationsAst)
   }
 
   def astForItemStruct(filename: String, parentFullname: String, itemStruct: ItemStruct): Ast = {

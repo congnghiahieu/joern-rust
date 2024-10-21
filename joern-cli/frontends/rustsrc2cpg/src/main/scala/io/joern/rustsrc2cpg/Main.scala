@@ -21,16 +21,19 @@ private object Frontend {
 object Main extends X2CpgMain(Frontend.cmdLineParser, new RustCpg())(Frontend.defaultConfig) {
   def run(config: Config, rustcpg: RustCpg): Unit = {
     val inputDir = File(config.inputPath)
-    if (!inputDir.isDirectory) return
-
-    if (inputDir.name.endsWith("projects")) {
-      inputDir.list.filter(_.isDirectory).foreach { directory =>
-        config.inputPath = directory.pathAsString
-        var testRustCpg = RustCpg()
-        testRustCpg.run(config)
+    if (inputDir.isDirectory) {
+      if (inputDir.name.endsWith("projects")) {
+        inputDir.list.filter(_.isDirectory).foreach { directory =>
+          config.inputPath = directory.pathAsString
+          var testRustCpg = RustCpg()
+          testRustCpg.run(config)
+        }
+      } else {
+        rustcpg.run(config)
       }
-    } else {
+    } else if (inputDir.isRegularFile) {
       rustcpg.run(config)
     }
   }
+
 }

@@ -57,6 +57,10 @@ trait AstForStmt(implicit schemaValidationMode: ValidationMode) { this: AstCreat
 
   def astForLocal(filename: String, parentFullname: String, localInstance: Local): Ast = {
     val annotationsAst = localInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
+    val patAst = localInstance.pat match {
+      case Some(pat) => astForPat(filename, parentFullname, pat)
+      case None      => Ast()
+    }
 
     val name = localInstance.pat match {
       case Some(pat) => codeForPat(filename, parentFullname, pat)
@@ -66,14 +70,15 @@ trait AstForStmt(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     val node = localNode(localInstance, name, code, name)
 
     Ast(node)
+    // .withChild(patAst)
+    // .withChildren(annotationsAst)
   }
 
   def astForLocalInit(filename: String, parentFullname: String, localInitInstance: LocalInit): Ast = {
     val exprAst    = localInitInstance.expr.map(astForExpr(filename, parentFullname, _)).toList
     val divergeAst = localInitInstance.diverge.map(astForExpr(filename, parentFullname, _)).toList
 
-    val node = NewUnknown()
-
+    val node = unknownNode(localInitInstance, "")
     Ast(node)
       .withChildren(exprAst)
       .withChildren(divergeAst)

@@ -19,18 +19,27 @@ trait AstForFn(implicit schemaValidationMode: ValidationMode) { this: AstCreator
 
   def astForReturnType(filename: String, parentFullname: String, returnTypeInstance: ReturnType): Ast = {
     if (!returnTypeInstance.isDefined) {
-      return Ast(NewUnknown())
+      return Ast(unknownNode(EmptyAst(), ""))
     }
 
     return astForType(filename, parentFullname, returnTypeInstance.get)
   }
 
   def astForVariadic(filename: String, parentFullname: String, variadicInstance: Variadic): Ast = {
+    val annotationsAst = variadicInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
     val node = parameterInNode(variadicInstance, "", "", 0, false, EvaluationStrategies.BY_VALUE, "")
-    Ast(node)
+    Ast(node).withChildren(annotationsAst)
   }
+
   def astForVariant(filename: String, parentFullname: String, variantInstance: Variant): Ast = {
+    val annotationsAst = variantInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
     val node = memberNode(variantInstance, "", "", "")
-    Ast(node)
+    Ast(node).withChildren(annotationsAst)
   }
 }

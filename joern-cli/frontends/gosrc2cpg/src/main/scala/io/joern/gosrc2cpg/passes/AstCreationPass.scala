@@ -5,21 +5,27 @@ import io.joern.gosrc2cpg.ast.GoModule
 import io.joern.gosrc2cpg.ast.nodes.FileNode
 import io.joern.gosrc2cpg.astcreation.AstCreator
 import io.joern.gosrc2cpg.parser.JsonParser
-import io.joern.x2cpg.{Ast, SourceFiles}
-import io.joern.x2cpg.utils.{ExternalCommand, Report, TimeUtils}
+import io.joern.x2cpg.Ast
+import io.joern.x2cpg.SourceFiles
+import io.joern.x2cpg.utils.ExternalCommand
+import io.joern.x2cpg.utils.Report
+import io.joern.x2cpg.utils.TimeUtils
 import io.shiftleft.codepropertygraph.Cpg
-import io.shiftleft.codepropertygraph.generated.nodes.{NewFile, NewNamespaceBlock}
+import io.shiftleft.codepropertygraph.generated.nodes.NewFile
+import io.shiftleft.codepropertygraph.generated.nodes.NewNamespaceBlock
 import io.shiftleft.passes.ConcurrentWriterCpgPass
 import io.shiftleft.utils.IOUtils
-import org.slf4j.{Logger, LoggerFactory}
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.io.File
 import java.nio.file.Paths
+import java.util
 import java.util.concurrent.TimeUnit
 import scala.collection.mutable.ListBuffer
-import scala.reflect.{ClassTag, classTag}
+import scala.reflect.ClassTag
+import scala.reflect.classTag
 import scala.util.matching.Regex
-import java.util
 
 class AstCreationPass(cpg: Cpg, config: Config, workingDir: String, goModule: GoModule, report: Report = new Report())
     extends ConcurrentWriterCpgPass[Array[String]](cpg) {
@@ -32,7 +38,7 @@ class AstCreationPass(cpg: Cpg, config: Config, workingDir: String, goModule: Go
 
   override def generateParts(): Array[Array[String]] = {
 
-    val binary          = "/home/hieucien/Workspace/ast/joern-go/joern-cli/frontends/gosrc2cpg/bin/go-parser/goparser"
+    val binary          = "/home/hieucien/Workspace/ast/joern-rust/joern-cli/frontends/gosrc2cpg/bin/go-parser/goparser"
     val command: String = s"$binary parse ${config.inputPath} --output $workingDir"
     val output          = ExternalCommand.run(command, ".")
     output.foreach(strs => strs.foreach(str => logger.warn("GoParser: {}", str)))

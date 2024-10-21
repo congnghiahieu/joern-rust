@@ -6,7 +6,6 @@ import io.joern.x2cpg.AstCreatorBase
 import io.joern.x2cpg.AstNodeBuilder
 import io.joern.x2cpg.Defines
 import io.joern.x2cpg.ValidationMode
-import io.joern.x2cpg.utils.NodeBuilders
 import io.joern.x2cpg.utils.NodeBuilders.newModifierNode
 import io.shiftleft.codepropertygraph.generated.EvaluationStrategies
 import io.shiftleft.codepropertygraph.generated.ModifierTypes
@@ -17,21 +16,21 @@ import scala.collection.mutable.ListBuffer
 trait AstForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
   def astForPat(filename: String, parentFullname: String, patInstance: Pat): Ast = {
     if (patInstance.constPat.isDefined) {
-      astForPatConst(filename, parentFullname, patInstance.constPat.get)
+      astForExprConst(filename, parentFullname, patInstance.constPat.get)
     } else if (patInstance.identPat.isDefined) {
       astForPatIdent(filename, parentFullname, patInstance.identPat.get)
     } else if (patInstance.litPat.isDefined) {
-      astForPatLit(filename, parentFullname, patInstance.litPat.get)
+      astForExprLit(filename, parentFullname, patInstance.litPat.get)
     } else if (patInstance.macroPat.isDefined) {
-      astForPatMacro(filename, parentFullname, patInstance.macroPat.get)
+      astForExprMacro(filename, parentFullname, patInstance.macroPat.get)
     } else if (patInstance.orPat.isDefined) {
       astForPatOr(filename, parentFullname, patInstance.orPat.get)
     } else if (patInstance.parenPat.isDefined) {
       astForPatParen(filename, parentFullname, patInstance.parenPat.get)
     } else if (patInstance.pathPat.isDefined) {
-      astForPatPath(filename, parentFullname, patInstance.pathPat.get)
+      astForExprPath(filename, parentFullname, patInstance.pathPat.get)
     } else if (patInstance.rangePat.isDefined) {
-      astForPatRange(filename, parentFullname, patInstance.rangePat.get)
+      astForExprRange(filename, parentFullname, patInstance.rangePat.get)
     } else if (patInstance.referencePat.isDefined) {
       astForPatReference(filename, parentFullname, patInstance.referencePat.get)
     } else if (patInstance.restPat.isDefined) {
@@ -55,54 +54,208 @@ trait AstForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreato
     }
   }
 
-  def astForPatConst(filename: String, parentFullname: String, constPatInstance: ExprConst): Ast = {
-    astForExprConst(filename, parentFullname, constPatInstance)
-  }
   def astForPatIdent(filename: String, parentFullname: String, identPatInstance: PatIdent): Ast = {
-    Ast()
+    val annotationsAst = identPatInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
+    var code = identPatInstance.ident
+    if (identPatInstance.mut.isDefined) {
+      code = s"mut $code"
+    }
+    if (identPatInstance.ref.isDefined) {
+      code = s"&$code"
+    }
+    code = identPatInstance.subpat match {
+      case Some(subpat) => {
+        val subPatCode = codeForPat(filename, parentFullname, subpat)
+        s"$code @ $subPatCode"
+      }
+      case None => code
+    }
+
+    val identNode =
+      identifierNode(identPatInstance, identPatInstance.ident, code, identPatInstance.ident)
+    Ast(identNode)
+    // .withChildren(annotationsAst)
   }
-  def astForPatLit(filename: String, parentFullname: String, litPatInstance: ExprLit): Ast = {
-    astForExprLit(filename, parentFullname, litPatInstance)
-  }
-  def astForPatMacro(filename: String, parentFullname: String, macroPatInstance: ExprMacro): Ast = {
-    Ast()
-  }
+
   def astForPatOr(filename: String, parentFullname: String, orPatInstance: PatOr): Ast = {
-    Ast()
+    val annotationsAst = orPatInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
+    val casesAst = orPatInstance.cases.map(astForPat(filename, parentFullname, _)).toList
+    val code     = orPatInstance.cases.map(codeForPat(filename, parentFullname, _)).mkString(" | ")
+
+    Ast(unknownNode(EmptyAst(), ""))
+      .withChildren(casesAst)
+      .withChildren(annotationsAst)
   }
+
   def astForPatParen(filename: String, parentFullname: String, parenPatInstance: PatParen): Ast = {
-    Ast()
+    val annotationsAst = parenPatInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
+    val patAst = parenPatInstance.pat match {
+      case Some(pat) => astForPat(filename, parentFullname, pat)
+      case None      => Ast()
+    }
+
+    Ast(unknownNode(EmptyAst(), ""))
+      .withChild(patAst)
+      .withChildren(annotationsAst)
   }
-  def astForPatPath(filename: String, parentFullname: String, pathPatInstance: ExprPath): Ast = {
-    Ast()
-  }
-  def astForPatRange(filename: String, parentFullname: String, rangePatInstance: ExprRange): Ast = {
-    Ast()
-  }
+
   def astForPatReference(filename: String, parentFullname: String, referencePatInstance: PatReference): Ast = {
-    Ast()
+    val annotationsAst = referencePatInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
+    val patAst = referencePatInstance.pat match {
+      case Some(pat) => astForPat(filename, parentFullname, pat)
+      case None      => Ast()
+    }
+
+    Ast(unknownNode(EmptyAst(), ""))
+      .withChild(patAst)
+      .withChildren(annotationsAst)
   }
+
   def astForPatRest(filename: String, parentFullname: String, restPatInstance: PatRest): Ast = {
-    Ast()
+    val annotationsAst = restPatInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
+    val name = ".."
+    val identNode =
+      identifierNode(restPatInstance, name, name, name)
+    Ast(identNode)
   }
+
   def astForPatSlice(filename: String, parentFullname: String, slicePatInstance: PatSlice): Ast = {
-    Ast()
+    val annotationsAst = slicePatInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
+    val elemsAst = slicePatInstance.elems.map(astForPat(filename, parentFullname, _)).toList
+    val code     = s"[${slicePatInstance.elems.map(codeForPat(filename, parentFullname, _)).mkString(", ")}]"
+
+    Ast(unknownNode(EmptyAst(), code))
+      .withChildren(elemsAst)
+      .withChildren(annotationsAst)
   }
+
   def astForPatStruct(filename: String, parentFullname: String, structPatInstance: PatStruct): Ast = {
-    Ast()
+    val annotationsAst = structPatInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
+    val typeFullname = structPatInstance.path match {
+      case Some(path) => typeFullnameForPath(filename, parentFullname, path)
+      case None       => ""
+    }
+    val pathAst = structPatInstance.path match {
+      case Some(path) => astForPath(filename, parentFullname, path)
+      case None       => Ast()
+    }
+    val fieldsAst = structPatInstance.fields.map(astForFieldPat(filename, parentFullname, _)).toList
+    val restAst = structPatInstance.rest match {
+      case Some(rest) => astForPatRest(filename, parentFullname, rest)
+      case None       => Ast()
+    }
+
+    Ast(unknownNode(EmptyAst(), ""))
+      .withChild(pathAst)
+      .withChildren(fieldsAst)
+      .withChild(restAst)
+      .withChildren(annotationsAst)
   }
+
   def astForPatTuple(filename: String, parentFullname: String, tuplePatInstance: PatTuple): Ast = {
-    Ast()
+    val annotationsAst = tuplePatInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
+    val elemsAst = tuplePatInstance.elems.map(astForPat(filename, parentFullname, _)).toList
+    val code     = s"(${tuplePatInstance.elems.map(codeForPat(filename, parentFullname, _)).mkString(", ")})"
+
+    Ast(unknownNode(EmptyAst(), code))
+      .withChildren(elemsAst)
+      .withChildren(annotationsAst)
   }
+
   def astForPatTupleStruct(filename: String, parentFullname: String, tupleStructPatInstance: PatTupleStruct): Ast = {
-    Ast()
+    val annotationsAst = tupleStructPatInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
+    val typeFullname = tupleStructPatInstance.path match {
+      case Some(path) => typeFullnameForPath(filename, parentFullname, path)
+      case None       => ""
+    }
+    val pathAst = tupleStructPatInstance.path match {
+      case Some(path) => astForPath(filename, parentFullname, path)
+      case None       => Ast()
+    }
+    val elemsAst  = tupleStructPatInstance.elems.map(astForPat(filename, parentFullname, _)).toList
+    val elemsCode = tupleStructPatInstance.elems.map(codeForPat(filename, parentFullname, _)).mkString(", ")
+    val code =
+      s"$typeFullname($elemsCode)"
+
+    Ast(unknownNode(EmptyAst(), code))
+      .withChild(pathAst)
+      .withChildren(elemsAst)
+      .withChildren(annotationsAst)
   }
+
   def astForPatType(filename: String, parentFullname: String, typePatInstance: PatType): Ast = {
-    val node = parameterInNode(typePatInstance, "", "", 0, false, EvaluationStrategies.BY_VALUE, "")
-    Ast(node)
+    val annotationsAst = typePatInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
+    val patAst = typePatInstance.pat match {
+      case Some(pat) => astForPat(filename, parentFullname, pat)
+      case None      => Ast()
+    }
+    val typeAst = typePatInstance.ty match {
+      case Some(ty) => astForType(filename, parentFullname, ty)
+      case None     => Ast()
+    }
+
+    val typeFullName = typePatInstance.ty match {
+      case Some(ty) => typeFullnameForType(filename, parentFullname, ty)
+      case None     => ""
+    }
+
+    Ast(unknownNode(EmptyAst(), ""))
+      .withChild(patAst)
+      .withChild(typeAst)
+      .withChildren(annotationsAst)
   }
+
   def astForPatWild(filename: String, parentFullname: String, wildPatInstance: PatWild): Ast = {
-    Ast()
+    val annotationsAst = wildPatInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
+    val name = "_"
+    val identNode =
+      identifierNode(wildPatInstance, name, name, name)
+    Ast(identNode)
+    // .withChildren(annotationsAst)
   }
 }
 

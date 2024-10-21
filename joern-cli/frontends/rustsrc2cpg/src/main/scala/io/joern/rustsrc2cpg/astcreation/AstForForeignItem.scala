@@ -67,10 +67,11 @@ trait AstForForeignItem(implicit schemaValidationMode: ValidationMode) {
     val newLocalNode = localNode(staticForeignItemInstance, staticForeignItemInstance.ident, code, typeFullname)
 
     val staticAst = Ast(newLocalNode)
-    // .withChild(Ast(modifierNode))
-    // .withChildren(annotationsAst)
 
-    staticAst
+    Ast(unknownNode(EmptyAst(), ""))
+      .withChild(staticAst)
+      .withChild(Ast(modifierNode))
+      .withChildren(annotationsAst)
   }
 
   def astForForeignItemType(filename: String, parentFullname: String, typeForeignItemInstance: ForeignItemType): Ast = {
@@ -83,10 +84,9 @@ trait AstForForeignItem(implicit schemaValidationMode: ValidationMode) {
     val newItemTypeNode =
       typeDeclNode(typeForeignItemInstance, typeForeignItemInstance.ident, "", filename, "")
 
-    val typeAst = Ast(newItemTypeNode)
+    Ast(newItemTypeNode)
       .withChildren(annotationsAst)
       .withChildren(genericsAst)
-    typeAst
   }
 
   def astForForeignItemMacro(
@@ -94,10 +94,14 @@ trait AstForForeignItem(implicit schemaValidationMode: ValidationMode) {
     parentFullname: String,
     macroForeignItemInstance: ForeignItemMacro
   ): Ast = {
+    val annotationsAst = macroForeignItemInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
     val macroRustAst =
       Macro(macroForeignItemInstance.path, macroForeignItemInstance.delimiter, macroForeignItemInstance.tokens)
-    val macroAst = astForMacro(filename, parentFullname, macroRustAst)
-
-    macroAst
+    astForMacro(filename, parentFullname, macroRustAst)
+      .withChildren(annotationsAst)
   }
 }
