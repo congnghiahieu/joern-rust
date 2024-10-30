@@ -27,7 +27,9 @@ abstract class RustAst {
   def children: ListBuffer[RustAst] = this._children
 }
 
-class EmptyAst extends RustAst
+class UnknownAst extends RustAst
+
+class ExprElse extends RustAst {}
 
 class FileAst extends RustAst {
   var shebang: Option[String]              = None

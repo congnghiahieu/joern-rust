@@ -22,6 +22,7 @@ trait AstForAttribute(implicit schemaValidationMode: ValidationMode) { this: Ast
       }
       case None => ("", "", "")
     }
+
     var style = attributeInstance.style.getOrElse(AttrStyle.Outer)
     val code = style match {
       case AttrStyle.Outer => s"#[$attributeCode]"
@@ -32,6 +33,7 @@ trait AstForAttribute(implicit schemaValidationMode: ValidationMode) { this: Ast
       case Some(meta) => Seq(astForMeta(filename, parentFullname, meta))
       case None       => Seq()
     }
+
     val node = annotationNode(attributeInstance, code, attributeName, attributeName)
     annotationAst(node, metaAst)
   }

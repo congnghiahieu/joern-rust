@@ -54,42 +54,74 @@ trait AstForItem(implicit schemaValidationMode: ValidationMode) { this: AstCreat
   }
 
   def astForItemConst(filename: String, parentFullname: String, itemConst: ItemConst): Ast = {
-    val annotationsAst = itemConst.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val modifierNode   = modifierForVisibility(filename, parentFullname, itemConst.vis)
-    val genericsAst    = itemConst.generics.toList.flatMap(g => List(astForGenerics(filename, parentFullname, g)))
+    val annotationsAst = itemConst.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val modifierNode = modifierForVisibility(filename, parentFullname, itemConst.vis)
+    val genericsAst = itemConst.generics match {
+      case Some(generics) => astForGenerics(filename, parentFullname, generics)
+      case None           => Ast()
+    }
 
+    val typeAst = itemConst.ty match {
+      case Some(ty) => astForType(filename, parentFullname, ty)
+      case None     => Ast()
+    }
+    val exprAst = itemConst.expr match {
+      case Some(expr) => astForExpr(filename, parentFullname, expr)
+      case None       => Ast()
+    }
     val typeFullName = itemConst.ty match {
       case Some(ty) => typeFullnameForType(filename, parentFullname, ty)
-      case None     => ""
+      case None     => Defines.Unknown
     }
-    val code         = s"const ${itemConst.ident}: ${typeFullName}"
-    val newLocalNode = localNode(itemConst, itemConst.ident, code, typeFullName)
+    val localCode    = s"const ${itemConst.ident}: ${typeFullName}"
+    val newLocalNode = localNode(itemConst, itemConst.ident, localCode, typeFullName)
 
-    Ast(unknownNode(EmptyAst(), ""))
+    val exprCode = itemConst.expr match {
+      case Some(expr) => codeForExpr(filename, parentFullname, expr)
+      case None       => Defines.Unknown
+    }
+    val fullCode = s"${localCode} = ${exprCode}"
+
+    Ast(unknownNode(itemConst, fullCode))
       .withChild(Ast(newLocalNode))
+      .withChild(typeAst)
+      .withChild(exprAst)
       .withChild(Ast(modifierNode))
+      .withChild(genericsAst)
       .withChildren(annotationsAst)
-      .withChildren(genericsAst)
   }
 
   def astForItemEnum(filename: String, parentFullname: String, itemEnum: ItemEnum): Ast = {
-    val annotationsAst = itemEnum.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val genericsAst    = itemEnum.generics.toList.flatMap(g => List(astForGenerics(filename, parentFullname, g)))
-
-    val newEnumNode  = typeDeclNode(itemEnum, itemEnum.ident, "", filename, "")
+    val annotationsAst = itemEnum.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
     val modifierNode = modifierForVisibility(filename, parentFullname, itemEnum.vis)
-    val variants     = itemEnum.variants.map(variant => astForVariant(filename, parentFullname, variant)).toList
+    val genericsAst = itemEnum.generics match {
+      case Some(generics) => astForGenerics(filename, parentFullname, generics)
+      case None           => Ast()
+    }
+    val variants = itemEnum.variants.map(astForVariant(filename, itemEnum.ident, _)).toList
+
+    val code        = s"enum ${itemEnum.ident}"
+    val newEnumNode = typeDeclNode(itemEnum, itemEnum.ident, itemEnum.ident, filename, code)
 
     Ast(newEnumNode)
       .withChild(Ast(modifierNode))
-      .withChildren(annotationsAst)
+      .withChild(genericsAst)
       .withChildren(variants)
-      .withChildren(genericsAst)
+      .withChildren(annotationsAst)
   }
 
   def astForItemExternCrate(filename: String, parentFullname: String, itemExternCrate: ItemExternCrate): Ast = {
-    val annotationsAst = itemExternCrate.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val modifierNode   = modifierForVisibility(filename, parentFullname, itemExternCrate.vis)
+    val annotationsAst = itemExternCrate.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val modifierNode = modifierForVisibility(filename, parentFullname, itemExternCrate.vis)
 
     val importedEntity = itemExternCrate.ident
     val importedAs     = itemExternCrate.rename.getOrElse(itemExternCrate.ident)
@@ -106,23 +138,47 @@ trait AstForItem(implicit schemaValidationMode: ValidationMode) { this: AstCreat
   }
 
   def astForItemFn(filename: String, parentFullname: String, itemFn: ItemFn): Ast = {
-    val annotationsAst = itemFn.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val modifierNode   = modifierForVisibility(filename, parentFullname, itemFn.vis)
+    val annotationsAst = itemFn.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val modifierNode = modifierForVisibility(filename, parentFullname, itemFn.vis)
 
     val blockAst      = astForBlock(filename, parentFullname, itemFn.stmts)
-    val newMethodNode = methodNode(itemFn, itemFn.ident, "", "", filename).isExternal(itemFn.stmts.isEmpty)
-    val parameterIns  = itemFn.inputs.map(input => astForFnArg(filename, parentFullname, input)).toList
-    val methodReturnTypeFullname = itemFn.output match {
-      case Some(output) => typeFullnameForType(filename, parentFullname, output)
-      case None         => ""
+    val newMethodNode = methodNode(itemFn, itemFn.ident, itemFn.ident, "", filename).isExternal(itemFn.stmts.isEmpty)
+    val parameterIns  = itemFn.inputs.map(astForFnArg(filename, parentFullname, _)).toList
+    val methodRetNode = itemFn.output match {
+      case Some(output) => {
+        val typeFullname = typeFullnameForType(filename, parentFullname, output)
+        methodReturnNode(UnknownAst(), typeFullname).code(typeFullname)
+      }
+      case None => methodReturnNode(UnknownAst(), "")
     }
-    val methodRetNode = methodReturnNode(itemFn, methodReturnTypeFullname)
+    val variadicAst = itemFn.variadic match {
+      case Some(variadic) => astForVariadic(filename, parentFullname, variadic)
+      case _              => Ast()
+    }
+    val genericsAst = itemFn.generics match {
+      case Some(generics) => astForGenerics(filename, parentFullname, generics)
+      case None           => Ast()
+    }
 
-    methodAstWithAnnotations(newMethodNode, parameterIns, blockAst, methodRetNode, Seq(modifierNode), annotationsAst)
+    methodAstWithAnnotations(
+      newMethodNode,
+      parameterIns :+ variadicAst,
+      blockAst,
+      methodRetNode,
+      Seq(modifierNode),
+      annotationsAst
+    )
+      .withChild(genericsAst)
   }
 
   def astForItemForeignMod(filename: String, parentFullname: String, itemForeignMod: ItemForeignMod): Ast = {
-    val annotationsAst = itemForeignMod.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
+    val annotationsAst = itemForeignMod.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
 
     val abiName  = nameForAbi(filename, parentFullname, itemForeignMod.abi)
     val isUnsafe = itemForeignMod.unsafe.getOrElse(false)
@@ -149,25 +205,61 @@ trait AstForItem(implicit schemaValidationMode: ValidationMode) { this: AstCreat
   }
 
   def astForItemImpl(filename: String, parentFullname: String, itemImpl: ItemImpl): Ast = {
-    val annotationsAst = itemImpl.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val genericsAst    = itemImpl.generics.toList.flatMap(g => List(astForGenerics(filename, parentFullname, g)))
+    val annotationsAst = itemImpl.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val genericsAst = itemImpl.generics match {
+      case Some(generics) => astForGenerics(filename, parentFullname, generics)
+      case None           => Ast()
+    }
+    val selfTypeAst = itemImpl.self_ty match {
+      case Some(self_ty) => astForType(filename, parentFullname, self_ty)
+      case None          => Ast()
+    }
+    val traitImplAst = itemImpl.traitImpl match {
+      case Some((_, path)) => astForPath(filename, parentFullname, path)
+      case None            => Ast()
+    }
+    val itemsAst = itemImpl.items.map(astForImplItem(filename, parentFullname, _)).toList
 
-    val implNode = typeDeclNode(itemImpl, "", "", filename, "")
+    val structName = itemImpl.self_ty match {
+      case Some(self_ty) => typeFullnameForType(filename, parentFullname, self_ty)
+      case None          => Defines.Unknown
+    }
+    val code = itemImpl.traitImpl match {
+      case Some((_, path)) => {
+        val traitName = typeFullnameForPath(filename, parentFullname, path)
+        s"impl ${traitName} for ${structName}"
+      }
+      case None => s"impl ${structName}"
+    }
+
+    val implNode = typeDeclNode(itemImpl, code, code, filename, code)
 
     Ast(implNode)
+      .withChild(traitImplAst)
+      .withChild(selfTypeAst)
+      .withChildren(itemsAst)
+      .withChild(genericsAst)
       .withChildren(annotationsAst)
-      .withChildren(genericsAst)
   }
 
   def astForItemMacro(filename: String, parentFullname: String, itemMacro: ItemMacro): Ast = {
-    val annotationsAst = itemMacro.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val macroRustAst   = Macro(itemMacro.path, itemMacro.delimiter, itemMacro.tokens)
-    astForMacro(filename, parentFullname, macroRustAst).withChildren(annotationsAst)
+    val annotationsAst = itemMacro.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val macroInstance = Macro(itemMacro.path, itemMacro.delimiter, itemMacro.tokens)
+    astForMacro(filename, parentFullname, macroInstance).withChildren(annotationsAst)
   }
 
   def astForItemMod(filename: String, parentFullname: String, itemMod: ItemMod): Ast = {
-    val annotationsAst = itemMod.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val modifierNode   = modifierForVisibility(filename, parentFullname, itemMod.vis)
+    val annotationsAst = itemMod.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val modifierNode = modifierForVisibility(filename, parentFullname, itemMod.vis)
 
     itemMod.semi match {
       case Some(true) => {
@@ -186,7 +278,11 @@ trait AstForItem(implicit schemaValidationMode: ValidationMode) { this: AstCreat
         if (itemMod.unsafe.getOrElse(false)) { code = s"unsafe ${code}" }
         if (modifierNode.modifierType == ModifierTypes.PUBLIC) { code = s"pub ${code}" }
 
-        val contentAst = itemMod.content.toList.flatMap(_.map(astForItem(filename, parentFullname, _)))
+        val contentAst = itemMod.content match {
+          case Some(content) => content.map(astForItem(filename, parentFullname, _)).toList
+          case None          => List()
+        }
+        val contentWrapperAst = blockAst(blockNode(UnknownAst(), "{}", ""), contentAst)
 
         val modNamespaceBlock = NewNamespaceBlock()
           .name(itemMod.ident)
@@ -203,14 +299,17 @@ trait AstForItem(implicit schemaValidationMode: ValidationMode) { this: AstCreat
 
         modNamespaceAst
           .withChild(Ast(modifierNode))
+          .withChild(contentWrapperAst)
           .withChildren(annotationsAst)
-          .withChildren(contentAst)
     }
   }
 
   def astForItemStatic(filename: String, parentFullname: String, itemStatic: ItemStatic): Ast = {
-    val annotationsAst = itemStatic.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val modifierNode   = modifierForVisibility(filename, parentFullname, itemStatic.vis)
+    val annotationsAst = itemStatic.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val modifierNode = modifierForVisibility(filename, parentFullname, itemStatic.vis)
 
     val typeFullname = itemStatic.ty.map(typeFullnameForType(filename, parentFullname, _)).getOrElse("")
 
@@ -221,110 +320,168 @@ trait AstForItem(implicit schemaValidationMode: ValidationMode) { this: AstCreat
 
     val newLocalNode = localNode(itemStatic, itemStatic.ident, code, typeFullname)
 
-    Ast(unknownNode(EmptyAst(), ""))
+    Ast(unknownNode(itemStatic, ""))
       .withChild(Ast(newLocalNode))
       .withChild(Ast(modifierNode))
       .withChildren(annotationsAst)
   }
 
   def astForItemStruct(filename: String, parentFullname: String, itemStruct: ItemStruct): Ast = {
-    val annotationsAst = itemStruct.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val modifierNode   = modifierForVisibility(filename, parentFullname, itemStruct.vis)
-    val genericsAst    = itemStruct.generics.toList.flatMap(g => List(astForGenerics(filename, parentFullname, g)))
+    val annotationsAst = itemStruct.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val modifierNode = modifierForVisibility(filename, parentFullname, itemStruct.vis)
+    val genericsAst = itemStruct.generics match {
+      case Some(generics) => astForGenerics(filename, parentFullname, generics)
+      case None           => Ast()
+    }
 
     var code = s"struct ${itemStruct.ident}"
     if (modifierNode.modifierType == ModifierTypes.PUBLIC) { code = s"pub ${code}" }
-    val fieldsAst = itemStruct.fields.map(astForFields(filename, parentFullname, _)).getOrElse(Ast())
+    val fieldsAst = itemStruct.fields match {
+      case Some(fields) => astForFields(filename, parentFullname, fields)
+      case None         => Ast()
+    }
 
     val newItemStructNode = typeDeclNode(itemStruct, itemStruct.ident, itemStruct.ident, filename, code)
 
     Ast(newItemStructNode)
       .withChildren(annotationsAst)
-      .withChildren(genericsAst)
+      .withChild(genericsAst)
       .withChild(fieldsAst)
   }
 
   def astForItemTrait(filename: String, parentFullname: String, itemTrait: ItemTrait): Ast = {
-    val annotationsAst = itemTrait.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val modifierNode   = modifierForVisibility(filename, parentFullname, itemTrait.vis)
-    val genericsAst    = itemTrait.generics.toList.flatMap(g => List(astForGenerics(filename, parentFullname, g)))
+    val annotationsAst = itemTrait.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val modifierNode = modifierForVisibility(filename, parentFullname, itemTrait.vis)
+    val genericsAst = itemTrait.generics match {
+      case Some(generics) => astForGenerics(filename, parentFullname, generics)
+      case None           => Ast()
+    }
 
     val isUnsafe = itemTrait.unsafe.getOrElse(false)
     var code = if (isUnsafe) { s"unsafe trait ${itemTrait.ident}" }
     else { s"trait ${itemTrait.ident}" }
     if (modifierNode.modifierType == ModifierTypes.PUBLIC) { code = s"pub ${code}" }
 
-    val traitItemsAst = itemTrait.items.map(traitItem => astForTraitItem(filename, parentFullname, traitItem)).toList
+    val traitItemsAst = itemTrait.items.map(astForTraitItem(filename, parentFullname, _)).toList
     val supertraitsAst =
-      itemTrait.supertraits.map(supertrait => astForTypeParamBound(filename, parentFullname, supertrait)).toList
+      itemTrait.supertraits.map(astForTypeParamBound(filename, parentFullname, _)).toList
 
     val newItemTraitNode = typeDeclNode(itemTrait, itemTrait.ident, itemTrait.ident, filename, code)
 
     Ast(newItemTraitNode)
-      .withChildren(annotationsAst)
-      .withChildren(genericsAst)
       .withChildren(traitItemsAst)
+      .withChild(genericsAst)
       .withChildren(supertraitsAst)
+      .withChild(Ast(modifierNode))
+      .withChildren(annotationsAst)
   }
 
   def astForItemTraitAlias(filename: String, parentFullname: String, itemTraitAlias: ItemTraitAlias): Ast = {
-    val annotationsAst = itemTraitAlias.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val modifierNode   = modifierForVisibility(filename, parentFullname, itemTraitAlias.vis)
-    val genericsAst    = itemTraitAlias.generics.toList.flatMap(g => List(astForGenerics(filename, parentFullname, g)))
+    val annotationsAst = itemTraitAlias.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val modifierNode = modifierForVisibility(filename, parentFullname, itemTraitAlias.vis)
+    val genericsAst = itemTraitAlias.generics match {
+      case Some(generics) => astForGenerics(filename, parentFullname, generics)
+      case None           => Ast()
+    }
 
     var code = s"trait ${itemTraitAlias.ident}"
     if (modifierNode.modifierType == ModifierTypes.PUBLIC) { code = s"pub ${code}" }
 
     val boundsAst =
-      itemTraitAlias.bounds.map(supertrait => astForTypeParamBound(filename, parentFullname, supertrait)).toList
+      itemTraitAlias.bounds.map(astForTypeParamBound(filename, parentFullname, _)).toList
 
     val newItemTraitAliasNode = typeDeclNode(itemTraitAlias, itemTraitAlias.ident, itemTraitAlias.ident, filename, code)
 
     Ast(newItemTraitAliasNode)
       .withChildren(annotationsAst)
-      .withChildren(genericsAst)
+      .withChild(genericsAst)
       .withChildren(boundsAst)
   }
 
   def astForItemType(filename: String, parentFullname: String, itemType: ItemType): Ast = {
-    val annotationsAst = itemType.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val modifierNode   = modifierForVisibility(filename, parentFullname, itemType.vis)
-    val genericsAst    = itemType.generics.toList.flatMap(g => List(astForGenerics(filename, parentFullname, g)))
+    val annotationsAst = itemType.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val modifierNode = modifierForVisibility(filename, parentFullname, itemType.vis)
+    val genericsAst = itemType.generics match {
+      case Some(generics) => astForGenerics(filename, parentFullname, generics)
+      case None           => Ast()
+    }
+    val typeAst = itemType.ty match {
+      case Some(ty) => astForType(filename, parentFullname, ty)
+      case None     => Ast()
+    }
 
-    val typeFullname    = itemType.ty.map(typeFullnameForType(filename, parentFullname, _)).getOrElse("")
+    val typeFullname = itemType.ty match {
+      case Some(ty) => typeFullnameForType(filename, parentFullname, ty)
+      case None     => Defines.Unknown
+    }
     val code            = s"type ${itemType.ident} = ${typeFullname}"
-    val newItemTypeNode = typeDeclNode(itemType, itemType.ident, typeFullname, filename, code)
+    val newItemTypeNode = typeDeclNode(itemType, itemType.ident, itemType.ident, filename, code)
 
     Ast(newItemTypeNode)
+      .withChild(typeAst)
+      .withChild(genericsAst)
       .withChildren(annotationsAst)
-      .withChildren(genericsAst)
   }
 
   def astForItemUnion(filename: String, parentFullname: String, itemUnion: ItemUnion): Ast = {
-    val annotationsAst = itemUnion.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val modifierNode   = modifierForVisibility(filename, parentFullname, itemUnion.vis)
-    val genericsAst    = itemUnion.generics.toList.flatMap(g => List(astForGenerics(filename, parentFullname, g)))
+    val annotationsAst = itemUnion.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val modifierNode = modifierForVisibility(filename, parentFullname, itemUnion.vis)
+    val genericsAst = itemUnion.generics match {
+      case Some(generics) => astForGenerics(filename, parentFullname, generics)
+      case None           => Ast()
+    }
 
     val code            = s"union ${itemUnion.ident} {}"
     val newItemTypeNode = typeDeclNode(itemUnion, itemUnion.ident, itemUnion.ident, filename, code)
 
     Ast(newItemTypeNode)
       .withChildren(annotationsAst)
-      .withChildren(genericsAst)
+      .withChild(genericsAst)
   }
 
   def astForItemUse(filename: String, parentFullname: String, itemUse: ItemUse): Ast = {
-    val annotationsAst = itemUse.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val modifierNode   = modifierForVisibility(filename, parentFullname, itemUse.vis)
+    val annotationsAst = itemUse.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+    val modifierNode = modifierForVisibility(filename, parentFullname, itemUse.vis)
 
-    val importedEntity = ""
-    val importedAs     = ""
-    val code           = ""
+    val treeCode = itemUse.tree match {
+      case Some(tree) => codeForUseTree(filename, parentFullname, tree)
+      case None       => Defines.Unknown
+    }
+    var code = itemUse.leading_colon match {
+      case Some(true) => {
+        s"use ::${treeCode};"
+      }
+      case _ => {
+        s"use ${treeCode};"
+      }
+    }
+    if (modifierNode.modifierType == ModifierTypes.PUBLIC) { code = s"pub ${code}" }
+    val importedEntity = treeCode
+    val importedAs     = treeCode
 
     val importNode = newImportNode(code, importedEntity, importedAs, itemUse)
 
-    Ast(importNode)
-    // .withChild(Ast(modifierNode))
-    // .withChildren(annotationsAst)
+    Ast(unknownNode(itemUse, ""))
+      .withChild(Ast(importNode))
+      .withChild(Ast(modifierNode))
+      .withChildren(annotationsAst)
   }
 }

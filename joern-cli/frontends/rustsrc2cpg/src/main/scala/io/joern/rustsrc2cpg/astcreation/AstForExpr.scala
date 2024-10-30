@@ -107,15 +107,15 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case None        => Seq()
     }
     val elemsAst = arrayExprInstance.elems.map(astForExpr(filename, parentFullname, _)).toList
-    val code     = s"[${arrayExprInstance.elems.map(codeForExpr(filename, parentFullname, _)).mkString(", ")}]"
+    val code     = codeForExprArray(filename, parentFullname, arrayExprInstance)
 
     val arrayNode = NewArrayInitializer().code(code)
-    val arrayAst =
-      Ast(arrayNode)
-        .withChildren(annotationsAst)
-        .withChildren(elemsAst)
+    val arrayAst = Ast(arrayNode)
+      .withChildren(elemsAst)
+      .withChildren(annotationsAst)
 
-    Ast(unknownNode(EmptyAst(), "")).withChild(arrayAst)
+    Ast(unknownNode(arrayExprInstance, "")).withChild(arrayAst)
+
   }
 
   def astForExprAssign(filename: String, parentFullname: String, assignExprInstance: ExprAssign): Ast = {
@@ -131,19 +131,9 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(right) => Seq(astForExpr(filename, parentFullname, right))
       case None        => Seq()
     }
+    val code = codeForExprAssign(filename, parentFullname, assignExprInstance)
 
-    val leftCode = assignExprInstance.left match {
-      case Some(left) => codeForExpr(filename, parentFullname, left)
-      case None       => ""
-    }
-    val rightCode = assignExprInstance.right match {
-      case Some(right) => codeForExpr(filename, parentFullname, right)
-      case None        => ""
-    }
-    val code = s"$leftCode = $rightCode"
-
-    val assignAst = unknownNode(assignExprInstance, code)
-    Ast(assignAst)
+    Ast(unknownNode(assignExprInstance, code))
       .withChildren(annotationsAst)
       .withChildren(leftAst)
       .withChildren(rightAst)
@@ -156,11 +146,8 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     }
     val stmtAst = asyncExprInstance.stmts.map(astForStmt(filename, parentFullname, _)).toList
 
-    val code = asyncExprInstance.move match {
-      case Some(true) => "async move"
-      case _          => "async"
-    }
-    val asyncAst = blockNode(asyncExprInstance).code(code)
+    val code     = codeForExprAsync(filename, parentFullname, asyncExprInstance)
+    val asyncAst = blockNode(asyncExprInstance, code, "")
 
     blockAst(asyncAst, stmtAst).withChildren(annotationsAst)
   }
@@ -170,13 +157,15 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toSeq
       case None        => Seq()
     }
-    val awaitAst = callNode(awaitExprInstance, ".await", ".await", "", DispatchTypes.STATIC_DISPATCH, None, None)
+
+    val code     = codeForExprAwait(filename, parentFullname, awaitExprInstance)
+    val awaitAst = callNode(awaitExprInstance, code, code, code, DispatchTypes.STATIC_DISPATCH, None, None)
 
     awaitExprInstance.base match {
       case Some(base) =>
         val baseAst = astForExpr(filename, parentFullname, base)
-        // callAst(awaitAst, Seq(), None, None).withChildren(annotationsAst)
-        callAst(awaitAst).withChildren(annotationsAst)
+        callAst(awaitAst, Seq(), None, Some(baseAst))
+          .withChildren(annotationsAst)
       case None =>
         callAst(awaitAst).withChildren(annotationsAst)
     }
@@ -199,20 +188,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(op) => Seq(astForBinOp(filename, parentFullname, op))
       case None     => Seq()
     }
-
-    val leftCode = binaryExprInstance.left match {
-      case Some(left) => codeForExpr(filename, parentFullname, left)
-      case None       => ""
-    }
-    val rightCode = binaryExprInstance.right match {
-      case Some(right) => codeForExpr(filename, parentFullname, right)
-      case None        => ""
-    }
-    val opCode = binaryExprInstance.op match {
-      case Some(op) => op.toString
-      case None     => ""
-    }
-    val code = s"$leftCode $opCode $rightCode"
+    val code = codeForExprBinary(filename, parentFullname, binaryExprInstance)
 
     val binaryAst = unknownNode(binaryExprInstance, code)
 
@@ -234,12 +210,10 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     }
     val stmtAst = blockExprInstance.stmts.map(astForStmt(filename, parentFullname, _)).toList
 
-    val code = blockExprInstance.label match {
-      case Some(label) => s"'${label}: { }"
-      case None        => "{ }"
-    }
+    val code = codeForExprBlock(filename, parentFullname, blockExprInstance)
 
-    val exprBlockNode = blockNode(blockExprInstance).code(code)
+    val exprBlockNode = blockNode(blockExprInstance, code, "")
+
     blockAst(exprBlockNode, stmtAst)
       .withChild(labelAst)
       .withChildren(annotationsAst)
@@ -259,15 +233,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case None       => Ast()
     }
 
-    var code = "break"
-    code = breakExprInstance.expr match {
-      case Some(expr) => s"$code ${codeForExpr(filename, parentFullname, expr)}"
-      case None       => code
-    }
-    code = breakExprInstance.label match {
-      case Some(label) => s"break '${label}"
-      case None        => code
-    }
+    var code = codeForExprBreak(filename, parentFullname, breakExprInstance)
 
     val exprBreakNode = controlStructureNode(breakExprInstance, ControlStructureTypes.BREAK, code)
     controlStructureAst(exprBreakNode, None)
@@ -281,17 +247,26 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toSeq
       case None        => Seq()
     }
-    val argsAst       = callExprInstance.args.map(astForExpr(filename, parentFullname, _)).toList
-    val argWrapperAst = blockAst(blockNode(EmptyAst()), argsAst)
 
-    val code = ""
+    val funcAst = callExprInstance.func match {
+      case Some(func) => astForExpr(filename, parentFullname, func)
+      case None       => Ast()
+    }
+
+    val argsAst       = callExprInstance.args.map(astForExpr(filename, parentFullname, _)).toList
+    val argWrapperAst = blockAst(blockNode(UnknownAst(), "{}", ""), argsAst)
+
+    val code = codeForExprCall(filename, parentFullname, callExprInstance)
     val methodFullName = callExprInstance.func match {
       case Some(func) => codeForExpr(filename, parentFullname, func)
-      case None       => ""
+      case None       => Defines.Unknown
     }
+
     val callExprNode =
       callNode(callExprInstance, code, methodFullName, methodFullName, DispatchTypes.STATIC_DISPATCH, None, None)
+
     callAst(callExprNode, List(argWrapperAst), None, None)
+      .withChild(funcAst)
       .withChildren(annotationsAst)
   }
 
@@ -300,6 +275,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toSeq
       case None        => Seq()
     }
+
     val exprAst = castExprInstance.expr match {
       case Some(expr) => astForExpr(filename, parentFullname, expr)
       case None       => Ast()
@@ -308,20 +284,13 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(ty) => astForType(filename, parentFullname, ty)
       case None     => Ast()
     }
-    val argWrapperAst = blockAst(blockNode(EmptyAst()), List(exprAst, tyAst))
 
-    var code = ""
-    code = castExprInstance.expr match {
-      case Some(expr) => s"${codeForExpr(filename, parentFullname, expr)}"
-      case None       => ""
-    }
-    code = castExprInstance.ty match {
-      case Some(ty) => s"$code as ${typeFullnameForType(filename, parentFullname, ty)}"
-      case None     => code
-    }
+    val argWrapperAst = blockAst(blockNode(UnknownAst(), "{}", ""), List(exprAst, tyAst))
+    val code          = codeForExprCast(filename, parentFullname, castExprInstance)
     val castExprNode =
       callNode(castExprInstance, code, "as", "as", DispatchTypes.STATIC_DISPATCH, None, None)
-    callAst(castExprNode, List(argWrapperAst), None, None).withChildren(annotationsAst)
+    callAst(castExprNode, List(argWrapperAst), None, None)
+      .withChildren(annotationsAst)
   }
 
   def astForExprClosure(filename: String, parentFullname: String, closureExprInstance: ExprClosure): Ast = {
@@ -330,27 +299,27 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case None        => Seq()
     }
 
-    val bodyAst = closureExprInstance.body match {
-      case Some(body) => Seq(astForExpr(filename, parentFullname, body))
-      case None       => Seq()
-    }
-    val closureNode =
-      methodNode(closureExprInstance, Defines.Unknown, "", "", filename).isExternal(closureExprInstance.body.isEmpty)
     val inputsAst = closureExprInstance.inputs.map(astForPat(filename, parentFullname, _)).toList
     val methodReturnTypeFullname = closureExprInstance.output match {
       case Some(output) => typeFullnameForType(filename, parentFullname, output)
-      case None         => ""
+      case None         => Defines.Unknown
     }
-    val methodRetNode = methodReturnNode(closureExprInstance, methodReturnTypeFullname)
+    val methodRetNode = methodReturnNode(closureExprInstance, methodReturnTypeFullname).code(methodReturnTypeFullname)
     val lifetimeAst =
       closureExprInstance.lifetimes match {
         case Some(lifetimes) => lifetimes.map(astForGenericParam(filename, parentFullname, _)).toSeq
         case None            => Seq()
       }
+    val bodyAst = closureExprInstance.body match {
+      case Some(body) => astForExpr(filename, parentFullname, body)
+      case None       => Ast()
+    }
 
-    methodAstWithAnnotations(closureNode, inputsAst, bodyAst.head, methodRetNode, Nil, annotationsAst).withChildren(
-      lifetimeAst
-    )
+    val closureNode =
+      methodNode(closureExprInstance, Defines.Unknown, "", "", filename).isExternal(closureExprInstance.body.isEmpty)
+
+    methodAstWithAnnotations(closureNode, inputsAst, bodyAst, methodRetNode, Nil, annotationsAst)
+      .withChildren(lifetimeAst)
   }
 
   def astForExprConst(filename: String, parentFullname: String, constExprInstance: ExprConst): Ast = {
@@ -360,7 +329,8 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     }
     val stmtsAst = constExprInstance.stmts.map(astForStmt(filename, parentFullname, _)).toList
 
-    val constNode = blockNode(constExprInstance).code("const")
+    val code      = codeForExprConst(filename, parentFullname, constExprInstance)
+    val constNode = blockNode(constExprInstance, code, "")
     blockAst(constNode, stmtsAst)
       .withChildren(annotationsAst)
   }
@@ -375,11 +345,8 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case None        => Ast()
     }
 
-    val code = continueExprInstance.label match {
-      case Some(label) => s"continue '${label}"
-      case None        => "continue"
-    }
-    val exprContinueNode = controlStructureNode(continueExprInstance, ControlStructureTypes.CONTINUE, "continue")
+    val code             = codeForExprContinue(filename, parentFullname, continueExprInstance)
+    val exprContinueNode = controlStructureNode(continueExprInstance, ControlStructureTypes.CONTINUE, code)
 
     controlStructureAst(exprContinueNode, None)
       .withChild(labelAst)
@@ -391,23 +358,20 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
       case None        => List()
     }
-    val baseName = fieldExprInstance.base match {
-      case Some(base) => codeForExpr(filename, parentFullname, base)
-      case None       => ""
-    }
-    var ident = fieldExprInstance.named match {
-      case Some(name) => name
-      case None       => Defines.Unknown
-    }
-    ident = fieldExprInstance.unnamed match {
-      case Some(index) => index.toString
-      case None        => ident
-    }
-    val name = s"$baseName.$ident"
 
-    val fieldNode = fieldIdentifierNode(fieldExprInstance, name, name)
-    Ast(fieldNode)
-    // .withChildren(annotationsAst)
+    val baseAst = fieldExprInstance.base match {
+      case Some(base) => astForExpr(filename, parentFullname, base)
+      case None       => Ast()
+    }
+
+    val code     = codeForExprField(filename, parentFullname, fieldExprInstance)
+    val ident    = code.split('.').last
+    val fieldAst = Ast(fieldIdentifierNode(fieldExprInstance, ident, ident))
+
+    Ast(unknownNode(fieldExprInstance, code))
+      .withChild(fieldAst)
+      .withChild(baseAst)
+      .withChildren(annotationsAst)
   }
 
   def astForExprForLoop(filename: String, parentFullname: String, forLoopExprInstance: ExprForLoop): Ast = {
@@ -415,25 +379,29 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
       case None        => List()
     }
+
     val labelAst = forLoopExprInstance.label match {
       case Some(label) => astForLabel(filename, parentFullname, label)
       case None        => Ast()
     }
+    val bodyAst = astForBlock(filename, parentFullname, forLoopExprInstance.body)
+
     val patAst = forLoopExprInstance.pat match {
       case Some(pat) => astForPat(filename, parentFullname, pat)
       case None      => Ast()
     }
-    val pathWrapperAst = blockAst(blockNode(EmptyAst()), List(patAst))
+    val pathWrapperAst = blockAst(blockNode(UnknownAst(), "{}", ""), List(patAst))
+
     val exprAst = forLoopExprInstance.expr match {
       case Some(expr) => astForExpr(filename, parentFullname, expr)
       case None       => Ast()
     }
-    val exprWrapperAst = blockAst(blockNode(EmptyAst()), List(exprAst))
-    val bodyAst        = astForBlock(filename, parentFullname, forLoopExprInstance.body)
+    val exprWrapperAst = blockAst(blockNode(UnknownAst(), "{}", ""), List(exprAst))
 
-    val forLoopNode = controlStructureNode(forLoopExprInstance, ControlStructureTypes.FOR, "")
+    val code        = codeForExprForLoop(filename, parentFullname, forLoopExprInstance)
+    val forLoopNode = controlStructureNode(forLoopExprInstance, ControlStructureTypes.FOR, code)
 
-    forAst(forLoopNode, Seq(pathWrapperAst), Seq(pathWrapperAst), Seq(exprWrapperAst), Seq(exprWrapperAst), bodyAst)
+    forAst(forLoopNode, Seq(pathWrapperAst), Seq(), Seq(exprWrapperAst), Seq(), bodyAst)
       .withChild(labelAst)
       .withChildren(annotationsAst)
   }
@@ -447,9 +415,8 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(expr) => astForExpr(filename, parentFullname, expr)
       case None       => Ast()
     }
-    val groupNode = unknownNode(groupExprInstance, "")
 
-    Ast(groupNode)
+    Ast(unknownNode(groupExprInstance, ""))
       .withChild(exprAst)
       .withChildren(annotationsAst)
   }
@@ -463,14 +430,21 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(cond) => astForExpr(filename, parentFullname, cond)
       case None       => Ast()
     }
-    val condWrapperAst = blockAst(blockNode(EmptyAst()), List(condAst))
+    val condWrapperAst = blockAst(blockNode(UnknownAst(), "{}", ""), List(condAst))
     val thenAst        = astForBlock(filename, parentFullname, ifExprInstance.then_branch)
+
     val elseAst = ifExprInstance.else_branch match {
-      case Some(elseBranch) => astForExpr(filename, parentFullname, elseBranch)
-      case None             => Ast()
+      case Some(elseBranch) => {
+        val exprAst  = astForExpr(filename, parentFullname, elseBranch)
+        val code     = "else"
+        val elseNode = controlStructureNode(ExprElse(), ControlStructureTypes.ELSE, code)
+        controlStructureAst(elseNode, None).withChild(exprAst)
+      }
+      case None => Ast()
     }
 
-    val exprIfNode = controlStructureNode(ifExprInstance, ControlStructureTypes.IF, "")
+    val code       = "if"
+    val exprIfNode = controlStructureNode(ifExprInstance, ControlStructureTypes.IF, code)
 
     controlStructureAst(exprIfNode, Some(condWrapperAst))
       .withChild(thenAst)
@@ -483,19 +457,23 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
       case None        => List()
     }
-    val exprCode = indexExprInstance.expr match {
-      case Some(expr) => codeForExpr(filename, parentFullname, expr)
-      case None       => Defines.Unknown
+
+    val exprAst = indexExprInstance.expr match {
+      case Some(expr) => astForExpr(filename, parentFullname, expr)
+      case None       => Ast()
     }
+
     val indexCode = indexExprInstance.index match {
       case Some(index) => codeForExpr(filename, parentFullname, index)
       case None        => Defines.Unknown
     }
-    val name = s"$exprCode[$indexCode]"
+    val indexExprAst = Ast(fieldIdentifierNode(indexExprInstance, indexCode, indexCode))
 
-    val indexExprNode = fieldIdentifierNode(indexExprInstance, name, name)
-    Ast(indexExprNode)
-    // .withChildren(annotationsAst)
+    val code = codeForExprIndex(filename, parentFullname, indexExprInstance)
+    Ast(unknownNode(indexExprInstance, code))
+      .withChild(exprAst)
+      .withChild(indexExprAst)
+      .withChildren(annotationsAst)
   }
 
   def astForExprInfer(filename: String, parentFullname: String, inferExprInstance: ExprInfer): Ast = {
@@ -504,9 +482,13 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case None        => List()
     }
 
-    val exprInfAst = unknownNode(inferExprInstance, "")
+    val identNode =
+      identifierNode(inferExprInstance, "_", "_", "_")
 
-    Ast(exprInfAst)
+    // Ast(identNode)
+
+    Ast(unknownNode(inferExprInstance, ""))
+      .withChild(Ast(identNode))
       .withChildren(annotationsAst)
   }
 
@@ -564,7 +546,8 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     }
     val bodyAst = astForBlock(filename, parentFullname, loopExprInstance.body)
 
-    val loopNode = controlStructureNode(loopExprInstance, ControlStructureTypes.DO, "")
+    val code     = codeForExprLoop(filename, parentFullname, loopExprInstance)
+    val loopNode = controlStructureNode(loopExprInstance, "LOOP", code)
 
     controlStructureAst(loopNode, None)
       .withChild(labelAst)
@@ -591,10 +574,11 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(expr) => astForExpr(filename, parentFullname, expr)
       case None       => Ast()
     }
-    val condWrapperAst = blockAst(blockNode(EmptyAst()), List(exprAst))
+    val condWrapperAst = blockAst(blockNode(UnknownAst(), "{}", ""), List(exprAst))
     val armsAst        = matchExprInstance.arms.map(astForArm(filename, parentFullname, _)).toList
 
-    val exprMatchAst = controlStructureNode(matchExprInstance, ControlStructureTypes.MATCH, "")
+    val code         = codeForExprMatch(filename, parentFullname, matchExprInstance)
+    val exprMatchAst = controlStructureNode(matchExprInstance, ControlStructureTypes.MATCH, code)
 
     controlStructureAst(exprMatchAst, Some(condWrapperAst))
       .withChildren(armsAst)
@@ -606,17 +590,19 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
       case None        => List()
     }
+
     val receiverAst = methodCallExprInstance.receiver match {
       case Some(receiver) => astForExpr(filename, parentFullname, receiver)
       case None           => Ast()
     }
-    val receiverWrapperAst = blockAst(blockNode(EmptyAst()), List(receiverAst))
+    val receiverWrapperAst = blockAst(blockNode(UnknownAst(), "{}", ""), List(receiverAst))
+
     val turbofishAst = methodCallExprInstance.turbofish match {
       case Some(turbofish) => astForAngleBracketedGenericArguments(filename, parentFullname, turbofish)
       case None            => Ast()
     }
     val argsAst       = methodCallExprInstance.args.map(astForExpr(filename, parentFullname, _)).toList
-    val argWrapperAst = blockAst(blockNode(EmptyAst()), argsAst)
+    val argWrapperAst = blockAst(blockNode(UnknownAst(), "{}", ""), argsAst)
 
     val exprMethodCallAst = callNode(
       methodCallExprInstance,
@@ -642,7 +628,9 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(expr) => astForExpr(filename, parentFullname, expr)
       case None       => Ast()
     }
-    val exprParenNode = unknownNode(parenExprInstance, "")
+
+    val code          = codeForExprParen(filename, parentFullname, parenExprInstance)
+    val exprParenNode = unknownNode(parenExprInstance, code)
 
     Ast(exprParenNode)
       .withChild(exprAst)
@@ -655,18 +643,17 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case None        => List()
     }
 
-    val path    = Path(pathExprInstance.segments, pathExprInstance.leading_colon)
-    val pathAst = astForPath(filename, parentFullname, path)
+    val path         = Path(pathExprInstance.segments, pathExprInstance.leading_colon)
+    val pathAst      = astForPath(filename, parentFullname, path)
+    val typeFullname = typeFullnameForPath(filename, parentFullname, path)
     val qselfAst = pathExprInstance.qself match {
-      case Some(qself) => List(astForQself(filename, parentFullname, qself))
-      case None        => List()
+      case Some(qself) => astForQself(filename, parentFullname, qself)
+      case None        => Ast()
     }
-    val exprPathNode = identifierNode(pathExprInstance, "", "", "")
+    val exprPathNode = identifierNode(pathExprInstance, typeFullname, typeFullname, typeFullname)
     val exprPathAst  = Ast(exprPathNode)
 
-    Ast(unknownNode(EmptyAst(), ""))
-      .withChild(exprPathAst)
-      .withChildren(annotationsAst)
+    exprPathAst
   }
 
   def astForExprRange(filename: String, parentFullname: String, rangeExprInstance: ExprRange): Ast = {
@@ -687,16 +674,18 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(limit) => astForRangeLimits(filename, parentFullname, limit)
       case None        => Ast()
     }
+    val code = codeForExprRange(filename, parentFullname, rangeExprInstance)
 
-    val exprRangeNode = NewArrayInitializer()
+    val exprRangeNode = NewArrayInitializer().code(code)
+
     val exprRangeAst =
       Ast(exprRangeNode)
-        .withChildren(annotationsAst)
         .withChild(startAst)
         .withChild(limitAst)
         .withChild(endAst)
+        .withChildren(annotationsAst)
 
-    Ast(unknownNode(EmptyAst(), ""))
+    Ast(unknownNode(rangeExprInstance, ""))
       .withChild(exprRangeAst)
   }
 
@@ -706,17 +695,15 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case None        => List()
     }
 
-    val typeFullname = referenceExprInstance.expr match {
-      case Some(expr) => codeForExpr(filename, parentFullname, expr)
-      case None       => Defines.Unknown
+    val exprAst = referenceExprInstance.expr match {
+      case Some(expr) => astForExpr(filename, parentFullname, expr)
+      case None       => Ast()
     }
-    val code = referenceExprInstance.mut match {
-      case Some(true) => s"&mut ${typeFullname}"
-      case _          => s"&${typeFullname}"
-    }
-    val exprReferenceAst = typeRefNode(referenceExprInstance, code, typeFullname)
+    val code = codeForExprReference(filename, parentFullname, referenceExprInstance)
 
-    Ast(exprReferenceAst)
+    Ast(unknownNode(referenceExprInstance, "").code(code))
+      .withChild(exprAst)
+      .withChildren(annotationsAst)
     // .withChildren(annotationsAst)
   }
 
@@ -726,21 +713,23 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case None        => List()
     }
 
-    val exprCode = repeatExprInstance.expr match {
-      case Some(expr) => codeForExpr(filename, parentFullname, expr)
-      case None       => Defines.Unknown
+    val exprAst = repeatExprInstance.expr match {
+      case Some(expr) => astForExpr(filename, parentFullname, expr)
+      case None       => Ast()
     }
-    val lenCode = repeatExprInstance.len match {
-      case Some(len) => codeForExpr(filename, parentFullname, len)
-      case None      => Defines.Unknown
+    val lenAst = repeatExprInstance.len match {
+      case Some(len) => astForExpr(filename, parentFullname, len)
+      case None      => Ast()
     }
-    val code           = s"[$exprCode; $lenCode]"
-    val exprRepeatNode = NewArrayInitializer().code(code)
 
+    val code           = codeForExprRepeat(filename, parentFullname, repeatExprInstance)
+    val exprRepeatNode = NewArrayInitializer().code(code)
     val exprRepeateAst = Ast(exprRepeatNode)
+      .withChild(exprAst)
+      .withChild(lenAst)
       .withChildren(annotationsAst)
 
-    Ast(unknownNode(EmptyAst(), "")).withChild(exprRepeateAst)
+    Ast(unknownNode(repeatExprInstance, "")).withChild(exprRepeateAst)
   }
 
   def astForExprReturn(filename: String, parentFullname: String, returnExprInstance: ExprReturn): Ast = {
@@ -753,11 +742,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(expr) => astForExpr(filename, parentFullname, expr)
       case None       => Ast()
     }
-    val exprReturnCode = returnExprInstance.expr match {
-      case Some(expr) => codeForExpr(filename, parentFullname, expr)
-      case None       => Defines.Unknown
-    }
-    val code = s"return $exprReturnCode"
+    val code = codeForExprReturn(filename, parentFullname, returnExprInstance)
 
     val exprReturnNode = returnNode(returnExprInstance, code)
 
@@ -807,7 +792,8 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case None       => Ast()
     }
 
-    val exprTryAst = controlStructureNode(tryExprInstance, ControlStructureTypes.THROW, "")
+    val code       = codeForExprTry(filename, parentFullname, tryExprInstance)
+    val exprTryAst = controlStructureNode(tryExprInstance, ControlStructureTypes.THROW, code)
 
     controlStructureAst(exprTryAst, None)
       .withChild(exprAst)
@@ -822,7 +808,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
 
     val stmtsAst = tryBlockExprInstance.stmts.map(astForStmt(filename, parentFullname, _)).toList
 
-    val exprTryBlockAst = blockNode(tryBlockExprInstance)
+    val exprTryBlockAst = blockNode(tryBlockExprInstance, "{}", "")
 
     blockAst(exprTryBlockAst, stmtsAst)
       .withChildren(annotationsAst)
@@ -834,14 +820,14 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case None        => List()
     }
     val elemsAst = tupleExprInstance.elems.map(astForExpr(filename, parentFullname, _)).toList
-    val code     = s"(${tupleExprInstance.elems.map(codeForExpr(filename, parentFullname, _)).mkString(", ")})"
+    val code     = codeForExprTuple(filename, parentFullname, tupleExprInstance)
 
     val exprTupleNode = NewArrayInitializer().code(code)
     val exprTupleAst = Ast(exprTupleNode)
-      .withChildren(annotationsAst)
       .withChildren(elemsAst)
+      .withChildren(annotationsAst)
 
-    Ast(unknownNode(EmptyAst(), ""))
+    Ast(unknownNode(tupleExprInstance, ""))
       .withChild(exprTupleAst)
   }
 
@@ -859,7 +845,9 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(op) => astForUnOp(filename, parentFullname, op)
       case None     => Ast()
     }
-    val exprUnaryNode = unknownNode(unaryExprInstance, "")
+    val code = codeForExprUnary(filename, parentFullname, unaryExprInstance)
+
+    val exprUnaryNode = unknownNode(unaryExprInstance, "").code(code)
 
     Ast(exprUnaryNode)
       .withChild(opAst)
@@ -875,7 +863,8 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
 
     val stmtsAst = unsafeExprInstance.stmts.map(astForStmt(filename, parentFullname, _)).toList
 
-    val exprUnsafeBlockAst = blockNode(unsafeExprInstance)
+    val code               = codeForExprUnsafe(filename, parentFullname, unsafeExprInstance)
+    val exprUnsafeBlockAst = blockNode(unsafeExprInstance, code, "")
 
     blockAst(exprUnsafeBlockAst, stmtsAst)
       .withChildren(annotationsAst)
@@ -895,9 +884,10 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(cond) => astForExpr(filename, parentFullname, cond)
       case None       => Ast()
     }
-    val bodyAst = whileExprInstance.body.map(astForStmt(filename, parentFullname, _)).toList
+    val bodyAst = astForBlock(filename, parentFullname, whileExprInstance.body)
+    val code    = "while"
 
-    whileAst(Some(condAst), bodyAst)
+    whileAst(Some(condAst), Seq(bodyAst), Some(code))
       .withChild(labelAst)
       .withChildren(annotationsAst)
   }
@@ -916,7 +906,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(expr) => codeForExpr(filename, parentFullname, expr)
       case None       => Defines.Unknown
     }
-    val code = s"yield $exprCode"
+    val code = codeForExprYield(filename, parentFullname, yieldExprInstance)
 
     val exprYieldAst = returnNode(yieldExprInstance, code)
 
@@ -1012,46 +1002,111 @@ trait CodeForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCrea
   }
 
   def codeForExprArray(filename: String, parentFullname: String, arrayExprInstance: ExprArray): String = {
-    "ArrayExpr"
+    s"[${arrayExprInstance.elems.map(codeForExpr(filename, parentFullname, _)).mkString(", ")}]"
   }
   def codeForExprAssign(filename: String, parentFullname: String, assignExprInstance: ExprAssign): String = {
-    "AssignExpr"
+    val leftCode = assignExprInstance.left match {
+      case Some(left) => codeForExpr(filename, parentFullname, left)
+      case None       => Defines.Unknown
+    }
+    val rightCode = assignExprInstance.right match {
+      case Some(right) => codeForExpr(filename, parentFullname, right)
+      case None        => Defines.Unknown
+    }
+    s"$leftCode = $rightCode"
   }
   def codeForExprAsync(filename: String, parentFullname: String, asyncExprInstance: ExprAsync): String = {
-    "AsyncExpr"
+    val code = asyncExprInstance.move match {
+      case Some(true) => "async move {}"
+      case _          => "async {}"
+    }
+    code
   }
   def codeForExprAwait(filename: String, parentFullname: String, awaitExprInstance: ExprAwait): String = {
-    "AwaitExpr"
+    ".await"
   }
   def codeForExprBinary(filename: String, parentFullname: String, binaryExprInstance: ExprBinary): String = {
-    "BinaryExpr"
+
+    val leftCode = binaryExprInstance.left match {
+      case Some(left) => codeForExpr(filename, parentFullname, left)
+      case None       => Defines.Unknown
+    }
+    val rightCode = binaryExprInstance.right match {
+      case Some(right) => codeForExpr(filename, parentFullname, right)
+      case None        => Defines.Unknown
+    }
+    val opCode = binaryExprInstance.op match {
+      case Some(op) => op.toString
+      case None     => Defines.Unknown
+    }
+    s"$leftCode $opCode $rightCode"
   }
   def codeForExprBlock(filename: String, parentFullname: String, blockExprInstance: ExprBlock): String = {
-    "BlockExpr"
+    val code = blockExprInstance.label match {
+      case Some(label) => s"'${label}: { }"
+      case None        => "{ }"
+    }
+    code
   }
   def codeForExprBreak(filename: String, parentFullname: String, breakExprInstance: ExprBreak): String = {
-    "BreakExpr"
+    var code = "break"
+    code = breakExprInstance.expr match {
+      case Some(expr) => s"$code ${codeForExpr(filename, parentFullname, expr)}"
+      case None       => code
+    }
+    breakExprInstance.label match {
+      case Some(label) => s"break '${label}"
+      case None        => code
+    }
   }
   def codeForExprCall(filename: String, parentFullname: String, callExprInstance: ExprCall): String = {
-    "CallExpr"
+    val funcCode = callExprInstance.func match {
+      case Some(callee) => codeForExpr(filename, parentFullname, callee)
+      case None         => Defines.Unknown
+    }
+    val argsCode = callExprInstance.args.map(codeForExpr(filename, parentFullname, _)).mkString(", ")
+    s"$funcCode($argsCode)"
   }
   def codeForExprCast(filename: String, parentFullname: String, castExprInstance: ExprCast): String = {
-    "CastExpr"
+    var code = ""
+    code = castExprInstance.expr match {
+      case Some(expr) => s"${codeForExpr(filename, parentFullname, expr)}"
+      case None       => Defines.Unknown
+    }
+    castExprInstance.ty match {
+      case Some(ty) => s"$code as ${typeFullnameForType(filename, parentFullname, ty)}"
+      case None     => code
+    }
   }
   def codeForExprClosure(filename: String, parentFullname: String, closureExprInstance: ExprClosure): String = {
     "ClosureExpr"
   }
   def codeForExprConst(filename: String, parentFullname: String, constExprInstance: ExprConst): String = {
-    "ConstExpr"
+    "const {}"
   }
   def codeForExprContinue(filename: String, parentFullname: String, continueExprInstance: ExprContinue): String = {
-    "ContinueExpr"
+    continueExprInstance.label match {
+      case Some(label) => s"continue '${label}"
+      case None        => "continue"
+    }
   }
   def codeForExprField(filename: String, parentFullname: String, fieldExprInstance: ExprField): String = {
-    "FieldExpr"
+    val baseName = fieldExprInstance.base match {
+      case Some(base) => codeForExpr(filename, parentFullname, base)
+      case None       => Defines.Unknown
+    }
+    var ident = fieldExprInstance.named match {
+      case Some(name) => name
+      case None       => Defines.Unknown
+    }
+    ident = fieldExprInstance.unnamed match {
+      case Some(index) => index.toString
+      case None        => ident
+    }
+    s"$baseName.$ident"
   }
   def codeForExprForLoop(filename: String, parentFullname: String, forLoopExprInstance: ExprForLoop): String = {
-    "ForLoopExpr"
+    "for"
   }
   def codeForExprGroup(filename: String, parentFullname: String, groupExprInstance: ExprGroup): String = {
     "GroupExpr"
@@ -1060,7 +1115,15 @@ trait CodeForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCrea
     "IfExpr"
   }
   def codeForExprIndex(filename: String, parentFullname: String, indexExprInstance: ExprIndex): String = {
-    "IndexExpr"
+    val exprCode = indexExprInstance.expr match {
+      case Some(expr) => codeForExpr(filename, parentFullname, expr)
+      case None       => Defines.Unknown
+    }
+    val indexCode = indexExprInstance.index match {
+      case Some(index) => codeForExpr(filename, parentFullname, index)
+      case None        => Defines.Unknown
+    }
+    s"$exprCode[$indexCode]"
   }
   def codeForExprInfer(filename: String, parentFullname: String, inferExprInstance: ExprInfer): String = {
     "InferExpr"
@@ -1069,16 +1132,28 @@ trait CodeForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCrea
     "LetExpr"
   }
   def codeForExprLit(filename: String, parentFullname: String, litExprInstance: ExprLit): String = {
-    "LitExpr"
+    val litInstance = Lit(
+      litExprInstance.strLit,
+      litExprInstance.byteStrLit,
+      litExprInstance.byteLit,
+      litExprInstance.charLit,
+      litExprInstance.intLit,
+      litExprInstance.floatLit,
+      litExprInstance.boolLit,
+      litExprInstance.verbatimLit
+    )
+    codeForLit(filename, parentFullname, litInstance)
   }
   def codeForExprLoop(filename: String, parentFullname: String, loopExprInstance: ExprLoop): String = {
-    "LoopExpr"
+    "loop"
   }
   def codeForExprMacro(filename: String, parentFullname: String, macroExprInstance: ExprMacro): String = {
-    "MacroExpr"
+    val macroRustAst = Macro(macroExprInstance.path, macroExprInstance.delimiter, macroExprInstance.tokens)
+    val (_, _, code) = codeForMacro(filename, parentFullname, macroRustAst)
+    code
   }
   def codeForExprMatch(filename: String, parentFullname: String, matchExprInstance: ExprMatch): String = {
-    "MatchExpr"
+    "match"
   }
   def codeForExprMethodCall(
     filename: String,
@@ -1088,45 +1163,96 @@ trait CodeForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCrea
     "MethodCallExpr"
   }
   def codeForExprParen(filename: String, parentFullname: String, parenExprInstance: ExprParen): String = {
-    "ParenExpr"
+    val exprCode = parenExprInstance.expr match {
+      case Some(expr) => codeForExpr(filename, parentFullname, expr)
+      case None       => Defines.Unknown
+    }
+    s"($exprCode)"
   }
   def codeForExprPath(filename: String, parentFullname: String, pathExprInstance: ExprPath): String = {
-    "PathExpr"
+    val path         = Path(pathExprInstance.segments, pathExprInstance.leading_colon)
+    val typeFullname = typeFullnameForPath(filename, parentFullname, path)
+    typeFullname
   }
   def codeForExprRange(filename: String, parentFullname: String, rangeExprInstance: ExprRange): String = {
-    "RangeExpr"
+    val startCode = rangeExprInstance.start match {
+      case Some(start) => codeForExpr(filename, parentFullname, start)
+      case None        => ""
+    }
+    val endCode = rangeExprInstance.end match {
+      case Some(end) => codeForExpr(filename, parentFullname, end)
+      case None      => ""
+    }
+    val limitCode = rangeExprInstance.limits match {
+      case Some(limit) => limit.toString
+      case None        => ""
+    }
+    s"$startCode$limitCode$endCode"
   }
   def codeForExprReference(filename: String, parentFullname: String, referenceExprInstance: ExprReference): String = {
-    "ReferenceExpr"
+    val exprCode = referenceExprInstance.expr match {
+      case Some(expr) => codeForExpr(filename, parentFullname, expr)
+      case None       => Defines.Unknown
+    }
+    val code = referenceExprInstance.mut match {
+      case Some(true) => s"&mut ${exprCode}"
+      case _          => s"&${exprCode}"
+    }
+    code
   }
   def codeForExprRepeat(filename: String, parentFullname: String, repeatExprInstance: ExprRepeat): String = {
-    "RepeatExpr"
+    val exprCode = repeatExprInstance.expr match {
+      case Some(expr) => codeForExpr(filename, parentFullname, expr)
+      case None       => Defines.Unknown
+    }
+    val lenCode = repeatExprInstance.len match {
+      case Some(len) => codeForExpr(filename, parentFullname, len)
+      case None      => Defines.Unknown
+    }
+    s"[$exprCode; $lenCode]"
+
   }
   def codeForExprReturn(filename: String, parentFullname: String, returnExprInstance: ExprReturn): String = {
-    "ReturnExpr"
+    val exprReturnCode = returnExprInstance.expr match {
+      case Some(expr) => codeForExpr(filename, parentFullname, expr)
+      case None       => Defines.Unknown
+    }
+    s"return $exprReturnCode"
   }
   def codeForExprStruct(filename: String, parentFullname: String, structExprInstance: ExprStruct): String = {
     "StructExpr"
   }
   def codeForExprTry(filename: String, parentFullname: String, tryExprInstance: ExprTry): String = {
-    "TryExpr"
+    "?"
   }
   def codeForExprTryBlock(filename: String, parentFullname: String, tryBlockExprInstance: ExprTryBlock): String = {
     "TryBlockExpr"
   }
   def codeForExprTuple(filename: String, parentFullname: String, tupleExprInstance: ExprTuple): String = {
-    "TupleExpr"
+    s"(${tupleExprInstance.elems.map(codeForExpr(filename, parentFullname, _)).mkString(", ")})"
   }
   def codeForExprUnary(filename: String, parentFullname: String, unaryExprInstance: ExprUnary): String = {
-    "UnaryExpr"
+    val exprCode = unaryExprInstance.expr match {
+      case Some(expr) => codeForExpr(filename, parentFullname, expr)
+      case None       => Defines.Unknown
+    }
+    val opCode = unaryExprInstance.op match {
+      case Some(op) => op.toString
+      case None     => Defines.Unknown
+    }
+    s"$opCode$exprCode"
   }
   def codeForExprUnsafe(filename: String, parentFullname: String, unsafeExprInstance: ExprUnsafe): String = {
-    "UnsafeExpr"
+    "unsafe {}"
   }
   def codeForExprWhile(filename: String, parentFullname: String, whileExprInstance: ExprWhile): String = {
-    "WhileExpr"
+    "while {}"
   }
   def codeForExprYield(filename: String, parentFullname: String, yieldExprInstance: ExprYield): String = {
-    "YieldExpr"
+    val exprCode = yieldExprInstance.expr match {
+      case Some(expr) => codeForExpr(filename, parentFullname, expr)
+      case None       => Defines.Unknown
+    }
+    s"yield $exprCode"
   }
 }

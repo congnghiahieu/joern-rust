@@ -21,7 +21,7 @@
       "name": "rustsrc2cpg Object Main Projects",
       "mainClass": "io.joern.rustsrc2cpg.Main",
       "args": [
-        "/home/hieucien/Workspace/ast/rust-parser/parser/tests/projects"
+        "/home/hieucien/Workspace/rust-parser/tests/projects"
       ],
       "jvmOptions": [],
       "env": {}
@@ -32,7 +32,7 @@
       "name": "rustsrc2cpg Object Main Examples",
       "mainClass": "io.joern.rustsrc2cpg.Main",
       "args": [
-        "/home/hieucien/Workspace/ast/rust-parser/parser/tests/examples"
+        "/home/hieucien/Workspace/ast/rust-parser/tests/examples"
       ],
       "jvmOptions": [],
       "env": {}
@@ -40,10 +40,21 @@
     {
       "type": "scala",
       "request": "launch",
-      "name": "rustsrc2cpg Object Main Actix-Web",
+      "name": "rustsrc2cpg Object Main If Else",
       "mainClass": "io.joern.rustsrc2cpg.Main",
       "args": [
-        "/home/hieucien/Workspace/ast/rust-parser/parser/tests/projects/actix-web"
+        "/home/hieucien/Workspace/rust-parser/tests/examples/expressions/if"
+      ],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "rustsrc2cpg Object Main Small Example",
+      "mainClass": "io.joern.rustsrc2cpg.Main",
+      "args": [
+        "/home/hieucien/Workspace/joern-rust/rust"
       ],
       "jvmOptions": [],
       "env": {}

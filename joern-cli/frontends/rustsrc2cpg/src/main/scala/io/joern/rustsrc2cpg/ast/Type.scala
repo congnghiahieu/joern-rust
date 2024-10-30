@@ -21,7 +21,7 @@ import scala.collection.mutable.ListBuffer
 
 // Custom Type Deserializer
 class TypeDeserializer extends JsonDeserializer[Type] {
-  override def deserialize(p: JsonParser, ctxt: DeserializationContext): Type = {
+  override def deserialize(p: JsonParser, ctx: DeserializationContext): Type = {
 
     val node = p.getCodec.readTree[BaseJsonNode](p)
 

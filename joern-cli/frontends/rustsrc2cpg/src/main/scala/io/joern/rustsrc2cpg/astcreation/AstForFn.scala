@@ -19,7 +19,7 @@ trait AstForFn(implicit schemaValidationMode: ValidationMode) { this: AstCreator
 
   def astForReturnType(filename: String, parentFullname: String, returnTypeInstance: ReturnType): Ast = {
     if (!returnTypeInstance.isDefined) {
-      return Ast(unknownNode(EmptyAst(), ""))
+      return Ast(unknownNode(UnknownAst(), ""))
     }
 
     return astForType(filename, parentFullname, returnTypeInstance.get)
@@ -30,16 +30,56 @@ trait AstForFn(implicit schemaValidationMode: ValidationMode) { this: AstCreator
       case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
       case None        => List()
     }
-    val node = parameterInNode(variadicInstance, "", "", 0, false, EvaluationStrategies.BY_VALUE, "")
-    Ast(node).withChildren(annotationsAst)
+
+    val name = variadicInstance.pat match {
+      case Some(pat) => codeForPat(filename, parentFullname, pat)
+      case None      => Defines.Unknown
+    }
+    val code = variadicInstance.comma match {
+      case Some(true) => s"$name: ...,"
+      case _          => s"$name: ..."
+    }
+
+    val node = parameterInNode(variadicInstance, name, code, -1, true, EvaluationStrategies.BY_VALUE, "")
+
+    Ast(node)
+      .withChildren(annotationsAst)
   }
 
   def astForVariant(filename: String, parentFullname: String, variantInstance: Variant): Ast = {
+    val name = variantInstance.ident
+    var code = variantInstance.ident
+    code = variantInstance.discriminant match {
+      case Some(discriminant) => s"$code = ${codeForExpr(filename, parentFullname, discriminant)}"
+      case None               => code
+    }
+    val typeFullname = s"${parentFullname}::${variantInstance.ident}"
+
     val annotationsAst = variantInstance.attrs match {
-      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case Some(attrs) => attrs.map(astForAttribute(filename, typeFullname, _)).toList
       case None        => List()
     }
-    val node = memberNode(variantInstance, "", "", "")
-    Ast(node).withChildren(annotationsAst)
+    val node = memberNode(variantInstance, name, code, typeFullname)
+      .astParentFullName(parentFullname)
+      .astParentType(classOf[ItemEnum].getSimpleName)
+
+    variantInstance.discriminant match {
+      case Some(discriminant) => {
+        val disciminantAst = astForExpr(filename, typeFullname, discriminant)
+        Ast(node)
+          .withChild(disciminantAst)
+          .withChildren(annotationsAst)
+      }
+      case None => {
+        val fieldsAst = variantInstance.fields match {
+          case Some(fields) => astForFields(filename, typeFullname, fields)
+          case None         => Ast()
+        }
+        Ast(node)
+          .withChild(fieldsAst)
+          .withChildren(annotationsAst)
+      }
+    }
+
   }
 }

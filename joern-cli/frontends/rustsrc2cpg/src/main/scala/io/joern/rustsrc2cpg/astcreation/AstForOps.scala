@@ -18,14 +18,14 @@ trait AstForOps(implicit schemaValidationMode: ValidationMode) { this: AstCreato
   def astForBinOp(filename: String, parentFullname: String, binOpInstance: BinOp): Ast = {
     val code         = binOpInstance.toString
     val typeFullname = binOpInstance.toString
-    val binOpAst     = literalNode(EmptyAst(), code, typeFullname)
+    val binOpAst     = literalNode(UnknownAst(), code, typeFullname)
     Ast(binOpAst)
   }
 
   def astForUnOp(filename: String, parentFullname: String, unOpInstance: UnOp): Ast = {
     val code         = unOpInstance.toString
     val typeFullname = unOpInstance.toString
-    val unOpAst      = literalNode(EmptyAst(), code, typeFullname)
+    val unOpAst      = literalNode(UnknownAst(), code, typeFullname)
     Ast(unOpAst)
   }
 }

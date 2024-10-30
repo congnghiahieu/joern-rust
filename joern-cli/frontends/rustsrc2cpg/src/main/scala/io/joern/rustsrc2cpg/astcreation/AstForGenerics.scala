@@ -15,22 +15,26 @@ import io.shiftleft.codepropertygraph.generated.nodes.*
 import scala.collection.mutable.ListBuffer
 trait AstForGenerics(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
   def astForGenerics(filename: String, parentFullname: String, generics: Generics): Ast = {
+    var genericsNode = Ast(unknownNode(UnknownAst(), "").parserTypeName(classOf[Generics].getSimpleName))
+
     if (generics.params.isDefined) {
-      val genericsNode = unknownNode(EmptyAst(), "")
       val genericParamsAsts = generics.params.get
         .map(astForGenericParam(filename, parentFullname, _))
         .toList
-      Ast(genericsNode).withChildren(genericParamsAsts)
-    } else if (generics.whereClause.isDefined) {
-      val genericsNode = unknownNode(EmptyAst(), "")
+      genericsNode = genericsNode.withChildren(genericParamsAsts)
+    }
+
+    if (generics.whereClause.isDefined) {
       val wherePredicatesAsts = generics.whereClause.get
         .map(astForWherePredicate(filename, parentFullname, _))
         .toList
-      Ast(genericsNode).withChildren(wherePredicatesAsts)
+      genericsNode = genericsNode.withChildren(wherePredicatesAsts)
+    }
 
+    if (genericsNode.nodes.nonEmpty) {
+      genericsNode
     } else {
-      throw new RuntimeException(s"Unknown Generics type: $generics")
+      Ast()
     }
   }
-
 }

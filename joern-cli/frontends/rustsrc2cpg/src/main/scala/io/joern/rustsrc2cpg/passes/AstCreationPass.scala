@@ -35,7 +35,7 @@ class AstCreationPass(
   report: Report = new Report()
 ) extends ConcurrentWriterCpgPass[Array[String]](cpg) {
 
-  private val inputRootPath = config.inputPath
+  private val inputRootPath                        = config.inputPath
   private val sourceFileExtension: Set[String]     = Set(".rs")
   private val DefaultIgnoredFolders: List[Regex]   = List()
   private val jsonParser: JsonParser               = new JsonParser()
@@ -74,7 +74,6 @@ class AstCreationPass(
     var cargoFileNumber = 0;
     var rustFileNumber  = 0;
 
-
     fileNames.foreach(fileName => {
       logger.warn("runOnPart: {}", fileName)
 
@@ -86,7 +85,8 @@ class AstCreationPass(
         val parsedFileAst = jsonParser.parse(relFilepath)
         val (gotCpg, duration) = TimeUtils.time {
           val localDiff =
-            new AstCreator(parsedFileAst, relFilepath, cargoCrate, usedPrimitiveTypes)(config.schemaValidation).createAst()
+            new AstCreator(parsedFileAst, relFilepath, cargoCrate, usedPrimitiveTypes)(config.schemaValidation)
+              .createAst()
           builder.absorb(localDiff)
         }
       } else {

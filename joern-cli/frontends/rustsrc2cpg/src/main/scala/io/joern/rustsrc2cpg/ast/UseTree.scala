@@ -21,7 +21,7 @@ import scala.collection.mutable.ListBuffer
 
 // Custom UseTree Deserializer
 class UseTreeDeserializer extends JsonDeserializer[UseTree] {
-  override def deserialize(p: JsonParser, ctxt: DeserializationContext): UseTree = {
+  override def deserialize(p: JsonParser, ctx: DeserializationContext): UseTree = {
 
     val node = p.getCodec.readTree[BaseJsonNode](p)
 
@@ -70,11 +70,11 @@ class UsePath extends RustAst {
   var tree: Option[UseTree] = None
 }
 
+type UseGroup = ListBuffer[UseTree]
+
 type UseName = Ident
 
 class UseRename extends RustAst {
   var ident: Ident  = ""
   var rename: Ident = ""
 }
-
-type UseGroup = ListBuffer[UseTree]

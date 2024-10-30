@@ -18,7 +18,7 @@ trait AstForTraitBoundModifier(implicit schemaValidationMode: ValidationMode) { 
   def astForTraitBound(filename: String, parentFullname: String, traitBound: TraitBound): Ast = {
     val typeFullname = traitBound.path match {
       case Some(path) => typeFullnameForPath(filename, parentFullname, path)
-      case None       => ""
+      case None       => Defines.Unknown
     }
     var code = traitBound.paren_token match {
       case Some(true) => s"($typeFullname)"
@@ -36,12 +36,12 @@ trait AstForTraitBoundModifier(implicit schemaValidationMode: ValidationMode) { 
   def codeForTraitBound(filename: String, parentFullname: String, traitBound: TraitBound): String = {
     val typeFullname = traitBound.path match {
       case Some(path) => typeFullnameForPath(filename, parentFullname, path)
-      case None       => ""
+      case None       => Defines.Unknown
     }
 
     traitBound.modifier match {
       case Some(TraitBoundModifier.Maybe) => s"?$typeFullname"
-      case _                              => ""
+      case _                              => s"$typeFullname"
     }
   }
 }

@@ -59,26 +59,19 @@ trait AstForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreato
       case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
       case None        => List()
     }
-
-    var code = identPatInstance.ident
-    if (identPatInstance.mut.isDefined) {
-      code = s"mut $code"
-    }
-    if (identPatInstance.ref.isDefined) {
-      code = s"&$code"
-    }
-    code = identPatInstance.subpat match {
-      case Some(subpat) => {
-        val subPatCode = codeForPat(filename, parentFullname, subpat)
-        s"$code @ $subPatCode"
-      }
-      case None => code
+    val subpatAst = identPatInstance.subpat match {
+      case Some(subpat) => astForPat(filename, parentFullname, subpat)
+      case None         => Ast()
     }
 
+    val code = codeForPatIdent(filename, parentFullname, identPatInstance)
     val identNode =
-      identifierNode(identPatInstance, identPatInstance.ident, code, identPatInstance.ident)
-    Ast(identNode)
-    // .withChildren(annotationsAst)
+      identifierNode(identPatInstance, identPatInstance.ident, code, "")
+
+    Ast(unknownNode(identPatInstance, code))
+      .withChild(Ast(identNode))
+      .withChild(subpatAst)
+      .withChildren(annotationsAst)
   }
 
   def astForPatOr(filename: String, parentFullname: String, orPatInstance: PatOr): Ast = {
@@ -88,9 +81,9 @@ trait AstForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreato
     }
 
     val casesAst = orPatInstance.cases.map(astForPat(filename, parentFullname, _)).toList
-    val code     = orPatInstance.cases.map(codeForPat(filename, parentFullname, _)).mkString(" | ")
+    val code     = codeForPatOr(filename, parentFullname, orPatInstance)
 
-    Ast(unknownNode(EmptyAst(), ""))
+    Ast(unknownNode(orPatInstance, ""))
       .withChildren(casesAst)
       .withChildren(annotationsAst)
   }
@@ -106,7 +99,7 @@ trait AstForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreato
       case None      => Ast()
     }
 
-    Ast(unknownNode(EmptyAst(), ""))
+    Ast(unknownNode(parenPatInstance, ""))
       .withChild(patAst)
       .withChildren(annotationsAst)
   }
@@ -121,8 +114,9 @@ trait AstForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreato
       case Some(pat) => astForPat(filename, parentFullname, pat)
       case None      => Ast()
     }
+    val code = codeForPatReference(filename, parentFullname, referencePatInstance)
 
-    Ast(unknownNode(EmptyAst(), ""))
+    Ast(unknownNode(referencePatInstance, "").code(code))
       .withChild(patAst)
       .withChildren(annotationsAst)
   }
@@ -133,9 +127,9 @@ trait AstForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreato
       case None        => List()
     }
 
-    val name = ".."
+    val code = codeForPatRest(filename, parentFullname, restPatInstance)
     val identNode =
-      identifierNode(restPatInstance, name, name, name)
+      identifierNode(restPatInstance, code, code, code)
     Ast(identNode)
   }
 
@@ -146,9 +140,9 @@ trait AstForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreato
     }
 
     val elemsAst = slicePatInstance.elems.map(astForPat(filename, parentFullname, _)).toList
-    val code     = s"[${slicePatInstance.elems.map(codeForPat(filename, parentFullname, _)).mkString(", ")}]"
+    val code     = codeForPatSlice(filename, parentFullname, slicePatInstance)
 
-    Ast(unknownNode(EmptyAst(), code))
+    Ast(unknownNode(slicePatInstance, code))
       .withChildren(elemsAst)
       .withChildren(annotationsAst)
   }
@@ -159,22 +153,24 @@ trait AstForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreato
       case None        => List()
     }
 
-    val typeFullname = structPatInstance.path match {
-      case Some(path) => typeFullnameForPath(filename, parentFullname, path)
-      case None       => ""
-    }
     val pathAst = structPatInstance.path match {
       case Some(path) => astForPath(filename, parentFullname, path)
       case None       => Ast()
     }
+    val qselfAst = structPatInstance.qself match {
+      case Some(qself) => astForQself(filename, parentFullname, qself)
+      case None        => Ast()
+    }
+
     val fieldsAst = structPatInstance.fields.map(astForFieldPat(filename, parentFullname, _)).toList
     val restAst = structPatInstance.rest match {
       case Some(rest) => astForPatRest(filename, parentFullname, rest)
       case None       => Ast()
     }
 
-    Ast(unknownNode(EmptyAst(), ""))
+    Ast(unknownNode(structPatInstance, ""))
       .withChild(pathAst)
+      .withChild(qselfAst)
       .withChildren(fieldsAst)
       .withChild(restAst)
       .withChildren(annotationsAst)
@@ -187,9 +183,9 @@ trait AstForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreato
     }
 
     val elemsAst = tuplePatInstance.elems.map(astForPat(filename, parentFullname, _)).toList
-    val code     = s"(${tuplePatInstance.elems.map(codeForPat(filename, parentFullname, _)).mkString(", ")})"
+    val code     = codeForPatTuple(filename, parentFullname, tuplePatInstance)
 
-    Ast(unknownNode(EmptyAst(), code))
+    Ast(unknownNode(tuplePatInstance, code))
       .withChildren(elemsAst)
       .withChildren(annotationsAst)
   }
@@ -200,20 +196,16 @@ trait AstForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreato
       case None        => List()
     }
 
-    val typeFullname = tupleStructPatInstance.path match {
-      case Some(path) => typeFullnameForPath(filename, parentFullname, path)
-      case None       => ""
-    }
     val pathAst = tupleStructPatInstance.path match {
       case Some(path) => astForPath(filename, parentFullname, path)
       case None       => Ast()
     }
-    val elemsAst  = tupleStructPatInstance.elems.map(astForPat(filename, parentFullname, _)).toList
-    val elemsCode = tupleStructPatInstance.elems.map(codeForPat(filename, parentFullname, _)).mkString(", ")
-    val code =
-      s"$typeFullname($elemsCode)"
 
-    Ast(unknownNode(EmptyAst(), code))
+    val elemsAst = tupleStructPatInstance.elems.map(astForPat(filename, parentFullname, _)).toList
+
+    val code = codeForPatTupleStruct(filename, parentFullname, tupleStructPatInstance)
+
+    Ast(unknownNode(tupleStructPatInstance, code))
       .withChild(pathAst)
       .withChildren(elemsAst)
       .withChildren(annotationsAst)
@@ -233,13 +225,9 @@ trait AstForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreato
       case Some(ty) => astForType(filename, parentFullname, ty)
       case None     => Ast()
     }
+    val code = codeForPatType(filename, parentFullname, typePatInstance)
 
-    val typeFullName = typePatInstance.ty match {
-      case Some(ty) => typeFullnameForType(filename, parentFullname, ty)
-      case None     => ""
-    }
-
-    Ast(unknownNode(EmptyAst(), ""))
+    Ast(unknownNode(typePatInstance, code))
       .withChild(patAst)
       .withChild(typeAst)
       .withChildren(annotationsAst)
@@ -262,21 +250,21 @@ trait AstForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreato
 trait CodeForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
   def codeForPat(filename: String, parentFullname: String, patInstance: Pat): String = {
     if (patInstance.constPat.isDefined) {
-      codeForPatConst(filename, parentFullname, patInstance.constPat.get)
+      codeForExprConst(filename, parentFullname, patInstance.constPat.get)
     } else if (patInstance.identPat.isDefined) {
       codeForPatIdent(filename, parentFullname, patInstance.identPat.get)
     } else if (patInstance.litPat.isDefined) {
-      codeForPatLit(filename, parentFullname, patInstance.litPat.get)
+      codeForExprLit(filename, parentFullname, patInstance.litPat.get)
     } else if (patInstance.macroPat.isDefined) {
-      codeForPatMacro(filename, parentFullname, patInstance.macroPat.get)
+      codeForExprMacro(filename, parentFullname, patInstance.macroPat.get)
     } else if (patInstance.orPat.isDefined) {
       codeForPatOr(filename, parentFullname, patInstance.orPat.get)
     } else if (patInstance.parenPat.isDefined) {
       codeForPatParen(filename, parentFullname, patInstance.parenPat.get)
     } else if (patInstance.pathPat.isDefined) {
-      codeForPatPath(filename, parentFullname, patInstance.pathPat.get)
+      codeForExprPath(filename, parentFullname, patInstance.pathPat.get)
     } else if (patInstance.rangePat.isDefined) {
-      codeForPatRange(filename, parentFullname, patInstance.rangePat.get)
+      codeForExprRange(filename, parentFullname, patInstance.rangePat.get)
     } else if (patInstance.referencePat.isDefined) {
       codeForPatReference(filename, parentFullname, patInstance.referencePat.get)
     } else if (patInstance.restPat.isDefined) {
@@ -300,56 +288,79 @@ trait CodeForPat(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     }
   }
 
-  def codeForPatConst(filename: String, parentFullname: String, constPatInstance: ExprConst): String = {
-    "Const Pattern"
-  }
   def codeForPatIdent(filename: String, parentFullname: String, identPatInstance: PatIdent): String = {
-    "Ident Pattern"
+    var code = identPatInstance.ident
+
+    if (identPatInstance.mut.isDefined) {
+      code = s"mut $code"
+    }
+    if (identPatInstance.ref.isDefined) {
+      code = s"ref $code"
+    }
+    identPatInstance.subpat match {
+      case Some(subpat) => {
+        val subPatCode = codeForPat(filename, parentFullname, subpat)
+        s"$code @ $subPatCode"
+      }
+      case None => code
+    }
   }
-  def codeForPatLit(filename: String, parentFullname: String, litPatInstance: ExprLit): String = {
-    "Lit Pattern"
-  }
-  def codeForPatMacro(filename: String, parentFullname: String, macroPatInstance: ExprMacro): String = {
-    "Macro Pattern"
-  }
+
   def codeForPatOr(filename: String, parentFullname: String, orPatInstance: PatOr): String = {
-    "Or Pattern"
+    orPatInstance.cases.map(codeForPat(filename, parentFullname, _)).mkString(" | ")
   }
   def codeForPatParen(filename: String, parentFullname: String, parenPatInstance: PatParen): String = {
     "Paren Pattern"
   }
-  def codeForPatPath(filename: String, parentFullname: String, pathPatInstance: ExprPath): String = {
-    "Path Pattern"
-  }
-  def codeForPatRange(filename: String, parentFullname: String, rangePatInstance: ExprRange): String = {
-    "Range Pattern"
-  }
+
   def codeForPatReference(filename: String, parentFullname: String, referencePatInstance: PatReference): String = {
-    "Reference Pattern"
+    referencePatInstance.mut match {
+      case Some(true) => s"&mut ${codeForPat(filename, parentFullname, referencePatInstance.pat.get)}"
+      case _          => s"&${codeForPat(filename, parentFullname, referencePatInstance.pat.get)}"
+    }
   }
   def codeForPatRest(filename: String, parentFullname: String, restPatInstance: PatRest): String = {
-    "Rest Pattern"
+    ".."
   }
   def codeForPatSlice(filename: String, parentFullname: String, slicePatInstance: PatSlice): String = {
-    "Slice Pattern"
+    s"[${slicePatInstance.elems.map(codeForPat(filename, parentFullname, _)).mkString(", ")}]"
   }
   def codeForPatStruct(filename: String, parentFullname: String, structPatInstance: PatStruct): String = {
-    "Struct Pattern"
+    val typeFullname = structPatInstance.path match {
+      case Some(path) => typeFullnameForPath(filename, parentFullname, path)
+      case None       => Defines.Unknown
+    }
+    val fieldsCode = s"${structPatInstance.fields.map(codeForFieldPat(filename, parentFullname, _)).mkString(", ")}"
+
+    s"$typeFullname { $fieldsCode }"
   }
   def codeForPatTuple(filename: String, parentFullname: String, tuplePatInstance: PatTuple): String = {
-    "Tuple Pattern"
+    s"(${tuplePatInstance.elems.map(codeForPat(filename, parentFullname, _)).mkString(", ")})"
   }
   def codeForPatTupleStruct(
     filename: String,
     parentFullname: String,
     tupleStructPatInstance: PatTupleStruct
   ): String = {
-    "Tuple Struct Pattern"
+    val typeFullname = tupleStructPatInstance.path match {
+      case Some(path) => typeFullnameForPath(filename, parentFullname, path)
+      case None       => Defines.Unknown
+    }
+    val elemsCode = tupleStructPatInstance.elems.map(codeForPat(filename, parentFullname, _)).mkString(", ")
+    s"$typeFullname($elemsCode)"
   }
   def codeForPatType(filename: String, parentFullname: String, typePatInstance: PatType): String = {
-    "Type Pattern"
+    val patCode = typePatInstance.pat match {
+      case Some(pat) => codeForPat(filename, parentFullname, pat)
+      case None      => Defines.Unknown
+    }
+    val typeCode = typePatInstance.ty match {
+      case Some(ty) => typeFullnameForType(filename, parentFullname, ty)
+      case None     => Defines.Unknown
+    }
+    s"$patCode: $typeCode"
   }
   def codeForPatWild(filename: String, parentFullname: String, wildPatInstance: PatWild): String = {
-    "Wild Pattern"
+    "_"
   }
 }

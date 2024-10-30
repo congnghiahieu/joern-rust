@@ -20,7 +20,7 @@ trait AstForPathArguments(implicit schemaValidationMode: ValidationMode) { this:
       case pathArgumentsNone: PathArgumentsNone =>
         val code         = pathArgumentsNone.toString
         val typeFullname = pathArgumentsNone.toString
-        val node         = literalNode(EmptyAst(), code, typeFullname)
+        val node         = literalNode(UnknownAst(), code, typeFullname)
         Ast(node)
       case pathArgumentsNotNone: PathArgumentsNotNone =>
         astForPathArgumentsNotNone(filename, parentFullname, pathArgumentsNotNone)

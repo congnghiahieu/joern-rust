@@ -14,24 +14,24 @@ import io.shiftleft.codepropertygraph.generated.EvaluationStrategies
 import io.shiftleft.codepropertygraph.generated.ModifierTypes
 import io.shiftleft.codepropertygraph.generated.nodes.*
 import io.shiftleft.codepropertygraph.generated.nodes.Block.PropertyDefaults as BlockDefaults
-
+import io.shiftleft.codepropertygraph.generated.ControlStructureTypes
 import scala.collection.mutable.ListBuffer
 
 trait AstForStmt(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
 
   def astForBlock(filename: String, parentFullname: String, blockInstance: Block): Ast = {
-    val node     = blockNode(EmptyAst())
+    val node     = blockNode(UnknownAst(), "{}", "")
     val stmtsAst = blockInstance.map(astForStmt(filename, parentFullname, _)).toList
     blockAst(node, stmtsAst)
   }
 
   def astForStmt(filename: String, parentFullname: String, stmtInstance: Stmt): Ast = {
     if (stmtInstance.letStmt.isDefined) {
-      return astForLetStmt(filename, parentFullname, stmtInstance.letStmt.get)
+      return astForLocal(filename, parentFullname, stmtInstance.letStmt.get)
     } else if (stmtInstance.itemStmt.isDefined) {
-      return astForItemStmt(filename, parentFullname, stmtInstance.itemStmt.get)
+      return astForItem(filename, parentFullname, stmtInstance.itemStmt.get)
     } else if (stmtInstance.exprStmt.isDefined) {
-      return astForExprStmt(filename, parentFullname, stmtInstance.exprStmt.get)
+      return astForExpr(filename, parentFullname, stmtInstance.exprStmt.get._1)
     } else if (stmtInstance.macroStmt.isDefined) {
       return astForMacroStmt(filename, parentFullname, stmtInstance.macroStmt.get)
     } else {
@@ -39,48 +39,63 @@ trait AstForStmt(implicit schemaValidationMode: ValidationMode) { this: AstCreat
     }
   }
 
-  def astForLetStmt(filename: String, parentFullname: String, letStmtInstance: Local): Ast = {
-    astForLocal(filename, parentFullname, letStmtInstance)
-  }
-  def astForItemStmt(filename: String, parentFullname: String, itemStmtInstance: Item): Ast = {
-    astForItem(filename, parentFullname, itemStmtInstance)
-  }
-  def astForExprStmt(filename: String, parentFullname: String, exprStmtInstance: (Expr, Boolean)): Ast = {
-    astForExpr(filename, parentFullname, exprStmtInstance._1)
-  }
   def astForMacroStmt(filename: String, parentFullname: String, macroStmtInstance: StmtMacro): Ast = {
-    val annotationsAst = macroStmtInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
+    val annotationsAst = macroStmtInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
 
     val macroRustAst = Macro(macroStmtInstance.path, macroStmtInstance.delimiter, macroStmtInstance.tokens)
     astForMacro(filename, parentFullname, macroRustAst).withChildren(annotationsAst)
   }
 
   def astForLocal(filename: String, parentFullname: String, localInstance: Local): Ast = {
-    val annotationsAst = localInstance.attrs.toList.flatMap(_.map(astForAttribute(filename, parentFullname, _)))
-    val patAst = localInstance.pat match {
-      case Some(pat) => astForPat(filename, parentFullname, pat)
-      case None      => Ast()
+    val annotationsAst = localInstance.attrs match {
+      case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
+      case None        => List()
+    }
+
+    val localInitAst = localInstance.init match {
+      case Some(init) => astForLocalInit(filename, parentFullname, init)
+      case None       => Ast()
     }
 
     val name = localInstance.pat match {
       case Some(pat) => codeForPat(filename, parentFullname, pat)
-      case None      => ""
+      case None      => Defines.Unknown
     }
     val code = s"let $name"
-    val node = localNode(localInstance, name, code, name)
+    val node = localNode(localInstance, code, code, "")
+    val patAst = localInstance.pat match {
+      case Some(pat) => astForPat(filename, parentFullname, pat)
+      case None      => Ast()
+    }
+    val wrapperAst = Ast(unknownNode(UnknownAst(), ""))
+      .withChild(Ast(node))
+      .withChild(patAst)
 
-    Ast(node)
-    // .withChild(patAst)
-    // .withChildren(annotationsAst)
+    Ast(unknownNode(localInstance, ""))
+      .withChild(wrapperAst)
+      .withChild(localInitAst)
+      .withChildren(annotationsAst)
   }
 
   def astForLocalInit(filename: String, parentFullname: String, localInitInstance: LocalInit): Ast = {
-    val exprAst    = localInitInstance.expr.map(astForExpr(filename, parentFullname, _)).toList
-    val divergeAst = localInitInstance.diverge.map(astForExpr(filename, parentFullname, _)).toList
+    val exprAst = localInitInstance.expr match {
+      case Some(expr) => astForExpr(filename, parentFullname, expr)
+      case None       => Ast()
+    }
+    val divergeAst = localInitInstance.diverge match {
+      case Some(diverge) => {
+        val divergeExpr = astForExpr(filename, parentFullname, diverge)
+        val elseNode    = controlStructureNode(ExprElse(), ControlStructureTypes.ELSE, "")
+        controlStructureAst(elseNode, None).withChild(divergeExpr)
+      }
+      case None => Ast()
+    }
 
-    val node = unknownNode(localInitInstance, "")
-    Ast(node)
-      .withChildren(exprAst)
-      .withChildren(divergeAst)
+    Ast(unknownNode(localInitInstance, ""))
+      .withChild(exprAst)
+      .withChild(divergeAst)
   }
 }

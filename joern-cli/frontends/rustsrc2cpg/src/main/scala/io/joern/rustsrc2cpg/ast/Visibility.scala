@@ -21,7 +21,7 @@ import scala.collection.mutable.ListBuffer
 
 // Custom Visibility Deserializer
 class VisibilityDeserializer extends JsonDeserializer[Visibility] {
-  override def deserialize(p: JsonParser, ctxt: DeserializationContext): Visibility = {
+  override def deserialize(p: JsonParser, ctx: DeserializationContext): Visibility = {
 
     val node = p.getCodec.readTree[BaseJsonNode](p)
 

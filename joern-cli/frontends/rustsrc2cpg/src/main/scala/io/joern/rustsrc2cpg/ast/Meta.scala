@@ -28,7 +28,7 @@ class Meta {
 }
 
 class PathSegmentDeserializer extends JsonDeserializer[ListBuffer[PathSegment]] {
-  override def deserialize(p: JsonParser, ctxt: DeserializationContext): ListBuffer[PathSegment] = {
+  override def deserialize(p: JsonParser, ctx: DeserializationContext): ListBuffer[PathSegment] = {
     val node       = p.getCodec.readTree[ObjectNode](p)
     val listBuffer = ListBuffer[PathSegment]()
 

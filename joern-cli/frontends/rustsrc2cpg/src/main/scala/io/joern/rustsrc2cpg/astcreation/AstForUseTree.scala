@@ -42,7 +42,7 @@ trait AstForUseTree(implicit schemaValidationMode: ValidationMode) { this: AstCr
   }
 
   private def astForUseName(filename: String, parentFullname: String, ident: Ident): Ast = {
-    val node = newImportNode("", ident, ident, EmptyAst()).isExplicit(true)
+    val node = newImportNode("", ident, ident, UnknownAst()).isExplicit(true)
     Ast(node)
   }
 
@@ -54,7 +54,46 @@ trait AstForUseTree(implicit schemaValidationMode: ValidationMode) { this: AstCr
   }
 
   private def astForUseGroup(filename: String, parentFullname: String, useGroupInstance: UseGroup): Ast = {
-    val node = newImportNode("", "", "", EmptyAst()).isExplicit(true)
+    val node = newImportNode("", "", "", UnknownAst()).isExplicit(true)
     Ast(node)
+  }
+}
+
+trait CodeForUseTree(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
+  def codeForUseTree(filename: String, parentFullname: String, useTreeInstance: UseTree): String = {
+    useTreeInstance match {
+      case glob: UseTreeGlob => glob.toString
+      case notGlob: UseTreeNotGlob =>
+        if (notGlob.pathUseTree.isDefined) {
+          codeForUsePath(filename, parentFullname, notGlob.pathUseTree.get)
+        } else if (notGlob.ident.isDefined) {
+          codeForUseName(filename, parentFullname, notGlob.ident.get)
+        } else if (notGlob.renameUseTree.isDefined) {
+          codeForUseRename(filename, parentFullname, notGlob.renameUseTree.get)
+        } else if (notGlob.groupUseTree.isDefined) {
+          codeForUseGroup(filename, parentFullname, notGlob.groupUseTree.get)
+        } else {
+          throw new RuntimeException("Unknown UseTreeNotGlob type")
+        }
+    }
+  }
+
+  private def codeForUsePath(filename: String, parentFullname: String, usePathInstance: UsePath): String = {
+    usePathInstance.tree match {
+      case Some(tree) => s"${usePathInstance.ident}::${codeForUseTree(filename, parentFullname, tree)}"
+      case None       => usePathInstance.ident
+    }
+  }
+
+  private def codeForUseName(filename: String, parentFullname: String, ident: Ident): String = {
+    ident.toString
+  }
+
+  private def codeForUseRename(filename: String, parentFullname: String, useRenameInstance: UseRename): String = {
+    s"${useRenameInstance.ident} as ${useRenameInstance.rename}"
+  }
+
+  private def codeForUseGroup(filename: String, parentFullname: String, useGroupInstance: UseGroup): String = {
+    s"{${useGroupInstance.map(codeForUseTree(filename, parentFullname, _)).mkString(", ")}}"
   }
 }

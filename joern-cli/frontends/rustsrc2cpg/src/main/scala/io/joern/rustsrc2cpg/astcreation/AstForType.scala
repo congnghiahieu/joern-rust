@@ -102,7 +102,9 @@ trait AstForType(implicit schemaValidationMode: ValidationMode) { this: AstCreat
 
   def astForTypePtr(filename: String, parentFullname: String, typePtrInstance: TypePtr): Ast = {
     val typeFullname = typeFullnameForTypePtr(filename, parentFullname, typePtrInstance)
-    val node         = typeRefNode(typePtrInstance, typeFullname, typeFullname)
+
+    val node = typeRefNode(typePtrInstance, typeFullname, typeFullname)
+
     Ast(node)
   }
 

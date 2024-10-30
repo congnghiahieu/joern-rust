@@ -18,7 +18,7 @@ trait AstForRangeLimits(implicit schemaValidationMode: ValidationMode) { this: A
   def astForRangeLimits(filename: String, parentFullname: String, rangeLimitsIntance: RangeLimits): Ast = {
     val code         = rangeLimitsIntance.toString
     val typeFullname = rangeLimitsIntance.toString
-    val node         = literalNode(EmptyAst(), code, typeFullname)
+    val node         = literalNode(UnknownAst(), code, typeFullname)
     Ast(node)
   }
 }

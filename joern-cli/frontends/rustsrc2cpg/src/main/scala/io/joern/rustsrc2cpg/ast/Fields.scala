@@ -21,7 +21,7 @@ import scala.collection.mutable.ListBuffer
 
 // Custom Fields Deserializer
 class FieldsDeserializer extends JsonDeserializer[Fields] {
-  override def deserialize(p: JsonParser, ctxt: DeserializationContext): Fields = {
+  override def deserialize(p: JsonParser, ctx: DeserializationContext): Fields = {
 
     val node = p.getCodec.readTree[BaseJsonNode](p)
 

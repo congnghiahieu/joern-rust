@@ -241,6 +241,7 @@ For each function, generate the missing code:
 - return `Ast(node)`
 - see function `astForTypeArray` for example
 
+```
 - Convert all code using `.toList.flatMap(_.map)` to using `match`
 
 For example from this:
@@ -267,3 +268,28 @@ controlStructureAst(armNode, Some(conditionAst), bodyAst)
 .withChildren(annotationsAst)
 
 move `val annotationsAst` to head of function body
+```
+
+- convert all
+
+```
+val genericsAst = typeImplItemInstance.generics match {
+      case Some(generics) => List(astForGenerics(filename, parentFullname, generics))
+      case None           => List()
+    }
+```
+
+to
+
+```
+val genericsAst = typeImplItemInstance.generics match {
+      case Some(generics) => astForGenerics(filename, parentFullname, generics)
+      case None           => Ast()
+    }
+```
+
+and use `withChild` instead of `withChildren` for `genericsAst`
+
+- replace `unknownNode(UnknownAst(), "")` with `unknownNode(variableName, "")`
+
+For example: `unknownNode(UnknownAst(), "")` to `unknownNode(referencePatInstance, "")`

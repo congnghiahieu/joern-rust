@@ -36,14 +36,14 @@ trait AstForMeta(implicit schemaValidationMode: ValidationMode) { this: AstCreat
 
   def astForMetaList(filename: String, parentFullname: String, metaListInstance: MetaList): Ast = {
     val (typeFullname, inputToken, code) = codeForMetaList(filename, parentFullname, metaListInstance)
-    val parameterAssignNode              = NewAnnotationParameterAssign().code(code)
-    annotationAssignmentAst(typeFullname, code, Ast(parameterAssignNode))
+    val parameterAssignNode              = Ast(unknownNode(metaListInstance, "").code(code))
+    annotationAssignmentAst(inputToken, code, parameterAssignNode)
   }
 
   def astForMetaNameValue(filename: String, parentFullname: String, metaNameValueInstance: MetaNameValue): Ast = {
     val (typeFullname, exprValue, code) = codeForMetaNameValue(filename, parentFullname, metaNameValueInstance)
-    val parameterAssignNode             = NewAnnotationParameterAssign().code(code)
-    annotationAssignmentAst(typeFullname, code, Ast(parameterAssignNode))
+    val parameterAssignNode             = Ast(unknownNode(metaNameValueInstance, "").code(code))
+    annotationAssignmentAst(exprValue, code, parameterAssignNode)
   }
 }
 
@@ -69,11 +69,11 @@ trait CodeForMeta(implicit schemaValidationMode: ValidationMode) { this: AstCrea
   def codeForMetaList(filename: String, parentFullname: String, metaListInstance: MetaList): CodeForReturnType = {
     val typeFullname = metaListInstance.path match {
       case Some(path) => typeFullnameForPath(filename, parentFullname, path)
-      case None       => ""
+      case None       => Defines.Unknown
     }
     val inputToken = metaListInstance.tokens match {
       case Some(tokens) => codeForTokenStream(filename, parentFullname, tokens)
-      case None         => ""
+      case None         => Defines.Unknown
     }
     val code = metaListInstance.delimiter match {
       case Some(delimiter) => {
@@ -96,17 +96,17 @@ trait CodeForMeta(implicit schemaValidationMode: ValidationMode) { this: AstCrea
   ): CodeForReturnType = {
     val typeFullname = metaNameValueInstance.path match {
       case Some(path) => typeFullnameForPath(filename, parentFullname, path)
-      case None       => ""
+      case None       => Defines.Unknown
     }
 
     val exprValue = metaNameValueInstance.value match {
       case Some(expr) => codeForExpr(filename, parentFullname, expr)
-      case None       => ""
+      case None       => Defines.Unknown
     }
 
     val code = metaNameValueInstance.value match {
       case Some(expr) => s"${typeFullname} = ${exprValue}"
-      case None       => ""
+      case None       => Defines.Unknown
     }
 
     (typeFullname, exprValue, code)

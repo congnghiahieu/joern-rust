@@ -19,7 +19,7 @@ trait AstForTokenTree(implicit schemaValidationMode: ValidationMode) { this: Ast
   def astForTokenStream(filename: String, parentFullname: String, tokenStream: TokenStream): Ast = {
     val code         = codeForTokenStream(filename, parentFullname, tokenStream)
     val typeFullname = codeForTokenStream(filename, parentFullname, tokenStream)
-    val node         = literalNode(EmptyAst(), code, typeFullname)
+    val node         = literalNode(UnknownAst(), code, typeFullname)
     Ast(node)
   }
 
@@ -45,7 +45,7 @@ trait AstForTokenTree(implicit schemaValidationMode: ValidationMode) { this: Ast
   }
 
   private def astForIdent(filename: String, parentFullname: String, identInstance: Ident): Ast = {
-    val node = identifierNode(EmptyAst(), identInstance, identInstance, identInstance)
+    val node = identifierNode(UnknownAst(), identInstance, identInstance, identInstance)
     Ast(node)
   }
 
@@ -57,7 +57,7 @@ trait AstForTokenTree(implicit schemaValidationMode: ValidationMode) { this: Ast
   }
 
   private def astForLiteral(filename: String, parentFullname: String, literalInstance: Literal): Ast = {
-    val node = literalNode(EmptyAst(), literalInstance, literalInstance)
+    val node = literalNode(UnknownAst(), literalInstance, literalInstance)
     Ast(node)
   }
 }
@@ -84,7 +84,7 @@ trait CodeForTokenTree(implicit schemaValidationMode: ValidationMode) { this: As
   def codeForGroup(filename: String, parentFullname: String, groupInstance: Group): String = {
     val streamAsString = groupInstance.stream match {
       case Some(stream) => codeForTokenStream(filename, parentFullname, stream)
-      case None         => ""
+      case None         => Defines.Unknown
     }
     if (!groupInstance.delimiter.isDefined) {
       return streamAsString

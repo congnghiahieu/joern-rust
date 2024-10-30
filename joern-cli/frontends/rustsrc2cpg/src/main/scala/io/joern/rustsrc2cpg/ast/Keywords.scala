@@ -75,4 +75,5 @@ object Primitives {
   val ISIZE = "isize"
   val F32   = "f32"
   val F64   = "f64"
+  val UNIT  = "()"
 }

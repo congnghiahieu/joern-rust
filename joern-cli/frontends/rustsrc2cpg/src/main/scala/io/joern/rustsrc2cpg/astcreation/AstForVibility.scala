@@ -33,17 +33,29 @@ trait AstForVisibility(implicit schemaValidationMode: ValidationMode) { this: As
       case visibilityString: VisibilityString => {
         visibilityString match {
           case VisibilityString.VisibilityPublic =>
-            return newModifierNode(ModifierTypes.PUBLIC)
+            return newModifierNode(ModifierTypes.PUBLIC).code("pub")
           case VisibilityString.VisibilityInherited =>
-            return newModifierNode(ModifierTypes.PUBLIC)
+            return newModifierNode(ModifierTypes.PUBLIC).code("pub")
         }
       }
       case visibilityOther: VisibilityOther => {
-        if (!visibilityOther.restricted.isDefined) {
-          return newModifierNode(ModifierTypes.PRIVATE)
-        }
+        visibilityOther.restricted match {
+          case Some(restricted) => {
+            val typeFullname = restricted.path match {
+              case Some(path) => typeFullnameForPath(filename, parentFullname, path)
+              case None       => Defines.Unknown
+            }
+            val code = restricted.in_token match {
+              case Some(true) => s"pub(in $typeFullname)"
+              case _          => s"pub($typeFullname)"
+            }
 
-        return newModifierNode(ModifierTypes.PUBLIC)
+            return newModifierNode(ModifierTypes.PUBLIC).code(code)
+          }
+          case None => {
+            return newModifierNode(ModifierTypes.PRIVATE)
+          }
+        }
       }
     }
   }

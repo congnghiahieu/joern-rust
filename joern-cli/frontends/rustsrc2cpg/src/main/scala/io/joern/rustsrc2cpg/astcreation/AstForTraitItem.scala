@@ -36,19 +36,37 @@ trait AstForTraitItem(implicit schemaValidationMode: ValidationMode) { this: Ast
       case Some(attrs) => attrs.map(astForAttribute(filename, parentFullname, _)).toList
       case None        => List()
     }
+    val typeAst = traitItemConst.ty match {
+      case Some(ty) => astForType(filename, parentFullname, ty)
+      case None     => Ast()
+    }
+    val genericAst = traitItemConst.generics match {
+      case Some(generics) => astForGenerics(filename, parentFullname, generics)
+      case None           => Ast()
+    }
+    val defaultAst = traitItemConst.default match {
+      case Some(expr) => astForExpr(filename, parentFullname, expr)
+      case None       => Ast()
+    }
 
-    val code = ""
     val typeFullName = traitItemConst.ty match {
       case Some(ty) => typeFullnameForType(filename, parentFullname, ty)
-      case None     => ""
+      case None     => Defines.Unknown
     }
-    val newLocal = localNode(traitItemConst, traitItemConst.ident, code, typeFullName)
+    val defaultCode = traitItemConst.default match {
+      case Some(expr) => codeForExpr(filename, parentFullname, expr)
+      case None       => Defines.Unknown
+    }
+    val localCode = s"const ${traitItemConst.ident}: ${typeFullName}"
+    val newLocal  = localNode(traitItemConst, traitItemConst.ident, localCode, typeFullName)
 
-    Ast(memberNode(EmptyAst(), "", "", ""))
-      .withChild(
-        Ast(newLocal)
-        // .withChildren(annotationsAst)
-      )
+    val fullCode = s"${localCode} = ${defaultCode}"
+    Ast(memberNode(traitItemConst, traitItemConst.ident, fullCode, typeFullName))
+      .withChild(Ast(newLocal))
+      .withChild(typeAst)
+      .withChild(defaultAst)
+      .withChild(genericAst)
+      .withChildren(annotationsAst)
   }
 
   def astForTraitItemFn(filename: String, parentFullname: String, traitItemFn: TraitItemFn): Ast = {
@@ -57,19 +75,43 @@ trait AstForTraitItem(implicit schemaValidationMode: ValidationMode) { this: Ast
       case None        => List()
     }
 
-    val bodyAst       = blockAst(blockNode(traitItemFn, "", filename))
     val newMethodNode = methodNode(traitItemFn, traitItemFn.ident, traitItemFn.ident, "", filename)
-    val parameterIns  = traitItemFn.inputs.map(input => astForFnArg(filename, parentFullname, input)).toList
-    val methodReturnTypeFullname = traitItemFn.output match {
-      case Some(output) => typeFullnameForType(filename, parentFullname, output)
-      case None         => ""
+    val parameterIns  = traitItemFn.inputs.map(astForFnArg(filename, parentFullname, _)).toList
+    val methodRetNode = traitItemFn.output match {
+      case Some(output) => {
+        val typeFullname = typeFullnameForType(filename, parentFullname, output)
+        methodReturnNode(UnknownAst(), typeFullname).code(typeFullname)
+      }
+      case None => methodReturnNode(UnknownAst(), "")
+    }
+    val variadicAst = traitItemFn.variadic match {
+      case Some(variadic) => astForVariadic(filename, parentFullname, variadic)
+      case _              => Ast()
+    }
+    val genericsAst = traitItemFn.generics match {
+      case Some(generics) => astForGenerics(filename, parentFullname, generics)
+      case None           => Ast()
     }
 
-    val methodRetNode = methodReturnNode(traitItemFn, methodReturnTypeFullname)
-    val methodAst =
-      methodAstWithAnnotations(newMethodNode, parameterIns, bodyAst, methodRetNode, Nil, annotationsAst)
+    val methodAst = traitItemFn.default match {
+      case Some(default) => {
+        val blockAst = astForBlock(filename, parentFullname, default)
+        methodAstWithAnnotations(
+          newMethodNode,
+          parameterIns :+ variadicAst,
+          blockAst,
+          methodRetNode,
+          Nil,
+          annotationsAst
+        ).withChild(genericsAst)
+      }
+      case None =>
+        methodStubAst(newMethodNode, parameterIns :+ variadicAst, methodRetNode)
+          .withChild(genericsAst)
+          .withChildren(annotationsAst)
+    }
 
-    Ast(memberNode(EmptyAst(), "", "", ""))
+    Ast(memberNode(traitItemFn, "", "", ""))
       .withChild(methodAst)
   }
 
@@ -79,13 +121,36 @@ trait AstForTraitItem(implicit schemaValidationMode: ValidationMode) { this: Ast
       case None        => List()
     }
 
-    val code        = ""
+    val genericsAst = traitItemType.generics match {
+      case Some(generics) => astForGenerics(filename, parentFullname, generics)
+      case None           => Ast()
+    }
+    val boundsAst = traitItemType.bounds.map(astForTypeParamBound(filename, parentFullname, _)).toList
+    val defaultAst = traitItemType.default match {
+      case Some(default) => astForType(filename, parentFullname, default)
+      case None          => Ast()
+    }
+
+    var code = s"type ${traitItemType.ident}"
+    code = traitItemType.bounds.nonEmpty match {
+      case true =>
+        val boundsCode =
+          traitItemType.bounds.map(bound => codeForTypeParamBound(filename, parentFullname, bound)).mkString(" + ")
+        s"$code: ${boundsCode}"
+      case false => code
+    }
+    code = traitItemType.default match {
+      case Some(default) => s"$code = ${typeFullnameForType(filename, parentFullname, default)}"
+      case None          => code
+    }
+
     val newTypeDecl = typeDeclNode(traitItemType, traitItemType.ident, traitItemType.ident, filename, code)
-    Ast(memberNode(EmptyAst(), "", "", ""))
-      .withChild(
-        Ast(newTypeDecl)
-          .withChildren(annotationsAst)
-      )
+    Ast(memberNode(traitItemType, "", "", ""))
+      .withChild(Ast(newTypeDecl))
+      .withChild(defaultAst)
+      .withChild(genericsAst)
+      .withChildren(boundsAst)
+      .withChildren(annotationsAst)
 
   }
 
@@ -99,7 +164,7 @@ trait AstForTraitItem(implicit schemaValidationMode: ValidationMode) { this: Ast
       Macro(traitItemMacro.path, traitItemMacro.delimiter, traitItemMacro.tokens)
     val macroAst = astForMacro(filename, parentFullname, macroInstance).withChildren(annotationsAst)
 
-    Ast(memberNode(EmptyAst(), "", "", ""))
+    Ast(memberNode(traitItemMacro, "", "", ""))
       .withChild(macroAst)
   }
 }

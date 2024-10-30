@@ -21,7 +21,7 @@ import scala.collection.mutable.ListBuffer
 
 // Custom PathArguments Deserializer
 class PathArgumentsDeserializer extends JsonDeserializer[PathArguments] {
-  override def deserialize(p: JsonParser, ctxt: DeserializationContext): PathArguments = {
+  override def deserialize(p: JsonParser, ctx: DeserializationContext): PathArguments = {
 
     val node = p.getCodec.readTree[BaseJsonNode](p)
 

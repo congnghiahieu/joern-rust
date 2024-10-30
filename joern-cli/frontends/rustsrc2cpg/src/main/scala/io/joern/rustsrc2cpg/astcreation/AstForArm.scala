@@ -22,8 +22,8 @@ trait AstForArm(implicit schemaValidationMode: ValidationMode) { this: AstCreato
       case None        => List()
     }
 
-    val code    = ""
-    val armNode = controlStructureNode(arm, ControlStructureTypes.MATCH, code)
+    val code    = "case"
+    val armNode = controlStructureNode(arm, "CASE", code)
 
     val patAst = arm.pat match {
       case Some(pat) => astForPat(filename, armNode.parserTypeName, pat)
@@ -33,7 +33,7 @@ trait AstForArm(implicit schemaValidationMode: ValidationMode) { this: AstCreato
       case Some(guard) => astForExpr(filename, armNode.parserTypeName, guard)
       case None        => Ast()
     }
-    var conditionAst = blockAst(blockNode(EmptyAst()), List(patAst, guardAst))
+    var conditionAst = blockAst(blockNode(UnknownAst(), "{}", ""), List(patAst, guardAst))
     val bodyAst      = arm.body.toList.map(astForExpr(filename, armNode.parserTypeName, _))
 
     controlStructureAst(armNode, Some(conditionAst), bodyAst)
@@ -42,7 +42,7 @@ trait AstForArm(implicit schemaValidationMode: ValidationMode) { this: AstCreato
 
   def astForLabel(filename: String, parentFullname: String, label: Label): Ast = {
     val code      = s"'${label}:"
-    val labelNode = jumpTargetNode(EmptyAst(), label, code)
+    val labelNode = jumpTargetNode(UnknownAst(), label, code).parserTypeName(classOf[Label].getSimpleName())
     Ast(labelNode)
   }
 }

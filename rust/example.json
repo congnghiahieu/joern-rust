@@ -1,0 +1,199 @@
+{
+  "attrs": [
+    {
+      "style": "inner",
+      "meta": {
+        "name_value": {
+          "path": {
+            "segments": [
+              {
+                "ident": "crate_type"
+              }
+            ]
+          },
+          "value": {
+            "lit": {
+              "str": "\"lib\""
+            }
+          }
+        }
+      }
+    }
+  ],
+  "items": [
+    {
+      "fn": {
+        "attrs": [
+          {
+            "style": "outer",
+            "meta": {
+              "path": {
+                "segments": [
+                  {
+                    "ident": "test"
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "ident": "test_foo",
+        "inputs": [],
+        "output": null,
+        "stmts": []
+      }
+    },
+    {
+      "mod": {
+        "attrs": [
+          {
+            "style": "outer",
+            "meta": {
+              "list": {
+                "path": {
+                  "segments": [
+                    {
+                      "ident": "cfg"
+                    }
+                  ]
+                },
+                "delimiter": "paren",
+                "tokens": [
+                  {
+                    "ident": "target_os"
+                  },
+                  {
+                    "punct": {
+                      "op": "=",
+                      "spacing": "alone"
+                    }
+                  },
+                  {
+                    "lit": "\"linux\""
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "ident": "bar",
+        "content": []
+      }
+    },
+    {
+      "type": {
+        "attrs": [
+          {
+            "style": "outer",
+            "meta": {
+              "list": {
+                "path": {
+                  "segments": [
+                    {
+                      "ident": "allow"
+                    }
+                  ]
+                },
+                "delimiter": "paren",
+                "tokens": [
+                  {
+                    "ident": "non_camel_case_types"
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "ident": "int8_t",
+        "ty": {
+          "path": {
+            "segments": [
+              {
+                "ident": "i8"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "fn": {
+        "attrs": [
+          {
+            "style": "inner",
+            "meta": {
+              "list": {
+                "path": {
+                  "segments": [
+                    {
+                      "ident": "allow"
+                    }
+                  ]
+                },
+                "delimiter": "paren",
+                "tokens": [
+                  {
+                    "ident": "unused_variables"
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "ident": "some_unused_variables",
+        "inputs": [],
+        "output": null,
+        "stmts": [
+          {
+            "let": {
+              "pat": {
+                "ident": {
+                  "ident": "x"
+                }
+              },
+              "init": {
+                "expr": {
+                  "tuple": {
+                    "elems": []
+                  }
+                }
+              }
+            }
+          },
+          {
+            "let": {
+              "pat": {
+                "ident": {
+                  "ident": "y"
+                }
+              },
+              "init": {
+                "expr": {
+                  "tuple": {
+                    "elems": []
+                  }
+                }
+              }
+            }
+          },
+          {
+            "let": {
+              "pat": {
+                "ident": {
+                  "ident": "z"
+                }
+              },
+              "init": {
+                "expr": {
+                  "tuple": {
+                    "elems": []
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

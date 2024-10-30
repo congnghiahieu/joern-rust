@@ -31,6 +31,7 @@ class AstCreator(
     with AstForExpr
     with CodeForExpr
     with AstForFields
+    with CodeForFields
     with AstForFn
     with AstForFnArg
     with AstForForeignItem
@@ -43,6 +44,7 @@ class AstCreator(
     with AstForLit
     with AstForMacro
     with AstForMember
+    with CodeForMember
     with AstForPat
     with CodeForPat
     with AstForOps
@@ -61,6 +63,7 @@ class AstCreator(
     with CodeForTypeParamBound
     with TypeFullnameForType
     with AstForUseTree
+    with CodeForUseTree
     with AstForVisibility
     with AstForWherePredicate
     with AstNodeBuilder[RustAst, AstCreator] {
