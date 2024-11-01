@@ -650,7 +650,7 @@ trait AstForExpr(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case Some(qself) => astForQself(filename, parentFullname, qself)
       case None        => Ast()
     }
-    val exprPathNode = identifierNode(pathExprInstance, typeFullname, typeFullname, typeFullname)
+    val exprPathNode = typeRefNode(pathExprInstance, typeFullname, typeFullname)
     val exprPathAst  = Ast(exprPathNode)
 
     exprPathAst

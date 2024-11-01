@@ -69,9 +69,7 @@ trait AstForForeignItem(implicit schemaValidationMode: ValidationMode) {
     else { s"static ${staticForeignItemInstance.ident}: ${typeFullname}" }
     if (modifierNode.modifierType == ModifierTypes.PUBLIC) { code = s"pub ${code}" }
 
-    val newLocalNode = localNode(staticForeignItemInstance, staticForeignItemInstance.ident, code, typeFullname)
-
-    val staticAst = Ast(newLocalNode)
+    val staticAst = Ast(localNode(staticForeignItemInstance, staticForeignItemInstance.ident, code, typeFullname))
 
     Ast(unknownNode(staticForeignItemInstance, ""))
       .withChild(staticAst)

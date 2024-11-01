@@ -15,19 +15,18 @@ import io.joern.x2cpg.passes.frontend.MetaDataPass
 import io.joern.x2cpg.utils.Report
 import io.shiftleft.codepropertygraph.Cpg
 
+import java.io.File
+import scala.util.Try
+
 object ExtendLanguages {
   final val RUSTLANG = "RUSTLANG"
 }
-
-import java.io.File
-import scala.util.Try
 
 class RustCpg extends X2CpgFrontend[Config] {
 
   private val report: Report = new Report()
 
   override def createCpg(config: Config): Try[Cpg] = {
-
     val rootPath = config.inputPath
     val rootFile = File(rootPath)
     if (!rootFile.isDirectory && !rootFile.isFile) {
@@ -43,12 +42,12 @@ class RustCpg extends X2CpgFrontend[Config] {
         val astCreationPass = new AstCreationPass(cpg, config, tempOutputDir.path, cargoCrate, report)
         astCreationPass.createAndApply()
 
-      // val typeResolverPass =
-      //   new TypeResolverPass(cpg, astCreationPass.getUsedPrimitiveType().toArray(Array.empty[String]))
-      // typeResolverPass.createAndApply()
+        val typeResolverPass =
+          new TypeResolverPass(cpg, astCreationPass.getUsedPrimitiveTypes().toArray(Array.empty[String]))
+        typeResolverPass.createAndApply()
 
-      // val moduleResovelerPass = new ModuleResolverPass(cpg, cargoCrate)
-      // moduleResovelerPass.createAndApply()
+        val moduleResovelerPass = new ModuleResolverPass(cpg, cargoCrate)
+        moduleResovelerPass.createAndApply()
       }
     }
   }

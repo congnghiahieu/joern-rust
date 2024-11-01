@@ -40,8 +40,9 @@ trait AstForFnArg(implicit schemaValidationMode: ValidationMode) { this: AstCrea
       case None     => Ast()
     }
 
-    val code                      = codeForPatType(filename, parentFullname, patTypeInstance)
-    val Array(name, typeFullname) = code.split(":").map(_.trim)
+    val code         = codeForPatType(filename, parentFullname, patTypeInstance)
+    val name         = code.split(":").map(_.trim).head
+    val typeFullname = code.split(":").map(_.trim).last
     val evaluationStrategy = typeFullname.contains("&") match {
       case true  => EvaluationStrategies.BY_REFERENCE
       case false => EvaluationStrategies.BY_VALUE

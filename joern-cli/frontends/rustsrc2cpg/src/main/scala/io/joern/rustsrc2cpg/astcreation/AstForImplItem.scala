@@ -58,7 +58,6 @@ trait AstForImplItem(implicit schemaValidationMode: ValidationMode) { this: AstC
       case None       => Defines.Unknown
     }
     val localCode = s"const ${constImplItemInstance.ident}: ${typeFullName}"
-    val newLocal  = localNode(constImplItemInstance, constImplItemInstance.ident, localCode, typeFullName)
 
     val fullCode = s"${localCode} = ${exprCode}"
     val node     = localNode(constImplItemInstance, constImplItemInstance.ident, localCode, typeFullName)

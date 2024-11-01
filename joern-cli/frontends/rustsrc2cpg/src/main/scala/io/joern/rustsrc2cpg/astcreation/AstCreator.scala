@@ -13,10 +13,8 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import overflowdb.BatchedUpdate.DiffGraphBuilder
 
-import java.nio.file.Paths
 import java.util
 import scala.collection.mutable.ListBuffer
-import scala.language.postfixOps
 
 class AstCreator(
   rootNode: FileAst,
@@ -86,8 +84,8 @@ class AstCreator(
   private def astForTranslationUnit(root: FileAst): Ast = {
     val parentFullname = ""
     val namespaceBlock = NewNamespaceBlock()
-      .name(cargoCrate.moduleName)
-      .fullName(cargoCrate.moduleName)
+      .name(cargoCrate.crateName)
+      .fullName(cargoCrate.crateName)
       .filename(relFilepath)
     val namespaceAst = Ast(namespaceBlock)
 

@@ -82,8 +82,8 @@ class AstCreationPass(
 
       if (!relFilepath.endsWith("Cargo.json")) {
         rustFileNumber += 1;
-        val parsedFileAst = jsonParser.parse(relFilepath)
         val (gotCpg, duration) = TimeUtils.time {
+          val parsedFileAst = jsonParser.parse(relFilepath)
           val localDiff =
             new AstCreator(parsedFileAst, relFilepath, cargoCrate, usedPrimitiveTypes)(config.schemaValidation)
               .createAst()
@@ -92,7 +92,6 @@ class AstCreationPass(
       } else {
         cargoFileNumber += 1;
       }
-
     })
 
     logger.info(s"[runOnPart] [${config.inputPath.split("/").last}] fileNames.length: ${fileNames.length}")

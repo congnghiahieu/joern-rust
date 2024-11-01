@@ -85,12 +85,6 @@ trait AstForWherePredicate(implicit schemaValidationMode: ValidationMode) { this
     Ast(node)
   }
 
-  def astForLifetimeAsArgument(filename: String, parentFullname: String, lifetimeInstance: Lifetime): Ast = {
-    val code = codeForLifetime(filename, parentFullname, lifetimeInstance)
-    val node = NewTypeArgument().code(code)
-    Ast(node)
-  }
-
   def codeForLifetime(filename: String, parentFullname: String, lifetimeInstance: Lifetime): String = {
     s"'${lifetimeInstance}"
   }

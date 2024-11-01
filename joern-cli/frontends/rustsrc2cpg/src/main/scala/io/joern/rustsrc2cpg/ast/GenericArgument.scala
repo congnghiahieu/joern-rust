@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName
 import com.fasterxml.jackson.annotation.JsonUnwrapped
 import com.fasterxml.jackson.annotation.JsonValue
 import io.joern.rustsrc2cpg.ast.*
+import scala.collection.mutable.ListBuffer
 
 class GenericArgument {
   @JsonProperty("lifetime")
@@ -39,5 +40,5 @@ class AssocConst extends BaseGenericArgument {
 }
 
 class Constraint extends BaseGenericArgument {
-  var bounds: List[TypeParamBound] = List.empty
+  var bounds: ListBuffer[TypeParamBound] = ListBuffer.empty
 }

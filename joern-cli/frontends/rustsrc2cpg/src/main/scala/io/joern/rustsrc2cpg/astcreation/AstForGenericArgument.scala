@@ -35,32 +35,86 @@ trait AstForGenericArgument(implicit schemaValidationMode: ValidationMode) { thi
   }
 
   def astForLifetimeGenericArgument(filename: String, parentFullname: String, lifetimeInstance: Lifetime): Ast = {
-    astForLifetimeAsArgument(filename, parentFullname, lifetimeInstance)
+    val code = codeForLifetime(filename, parentFullname, lifetimeInstance)
+    val node = NewTypeArgument().code(code)
+    Ast(node)
   }
 
   def astForTypeGenericArgument(filename: String, parentFullname: String, typeInstance: Type): Ast = {
     val newTypeArgument = NewTypeArgument()
-    Ast(newTypeArgument)
+    val typeAst         = astForType(filename, parentFullname, typeInstance)
+    val code            = typeFullnameForType(filename, parentFullname, typeInstance)
+
+    Ast(unknownNode(UnknownAst(), code))
+      .withChild(Ast(newTypeArgument))
+      .withChild(typeAst)
   }
 
   def astForConstGenericArgument(filename: String, parentFullname: String, constInstance: Expr): Ast = {
     val newTypeArgument = NewTypeArgument()
-    Ast(newTypeArgument)
+    val epxrAst         = astForExpr(filename, parentFullname, constInstance)
+    val code            = codeForExpr(filename, parentFullname, constInstance)
+
+    Ast(unknownNode(UnknownAst(), code))
+      .withChild(Ast(newTypeArgument))
+      .withChild(epxrAst)
   }
 
   def astForAssocTypeGenericArgument(filename: String, parentFullname: String, assocTypeInstance: AssocType): Ast = {
+    val name            = assocTypeInstance.ident
     val newTypeArgument = NewTypeArgument()
-    Ast(newTypeArgument)
+    val genericAst = assocTypeInstance.generics match {
+      case Some(generics) => astForAngleBracketedGenericArguments(filename, parentFullname, generics)
+      case None           => Ast()
+    }
+    val typeAst = assocTypeInstance.ty match {
+      case Some(ty) => astForType(filename, parentFullname, ty)
+      case None     => Ast()
+    }
+
+    val code = codeForAssocTypeGenericArgument(filename, parentFullname, assocTypeInstance)
+
+    Ast(unknownNode(assocTypeInstance, code))
+      .withChild(Ast(newTypeArgument))
+      .withChild(genericAst)
+      .withChild(typeAst)
   }
 
   def astForAssocConstGenericArgument(filename: String, parentFullname: String, assocConstInstance: AssocConst): Ast = {
+    val name            = assocConstInstance.ident
     val newTypeArgument = NewTypeArgument()
-    Ast(newTypeArgument)
+    val genericAst = assocConstInstance.generics match {
+      case Some(generics) => astForAngleBracketedGenericArguments(filename, parentFullname, generics)
+      case None           => Ast()
+    }
+    val valueAst = assocConstInstance.value match {
+      case Some(value) => astForExpr(filename, parentFullname, value)
+      case None        => Ast()
+    }
+
+    val code = codeForAssocConstGenericArgument(filename, parentFullname, assocConstInstance)
+
+    Ast(unknownNode(assocConstInstance, code))
+      .withChild(Ast(newTypeArgument))
+      .withChild(genericAst)
+      .withChild(valueAst)
   }
 
   def astForConstraintGenericArgument(filename: String, parentFullname: String, constraintInstance: Constraint): Ast = {
+    val name            = constraintInstance.ident
     val newTypeArgument = NewTypeArgument()
-    Ast(newTypeArgument)
+    val genericAst = constraintInstance.generics match {
+      case Some(generics) => astForAngleBracketedGenericArguments(filename, parentFullname, generics)
+      case None           => Ast()
+    }
+    val boundsAst = constraintInstance.bounds.map(astForTypeParamBound(filename, parentFullname, _)).toList
+
+    val code = codeForConstraintGenericArgument(filename, parentFullname, constraintInstance)
+
+    Ast(unknownNode(constraintInstance, code))
+      .withChild(Ast(newTypeArgument))
+      .withChild(genericAst)
+      .withChildren(boundsAst)
   }
 }
 
@@ -71,11 +125,11 @@ trait CodeForGenericArgument(implicit schemaValidationMode: ValidationMode) { th
     genericArgumentInstance: GenericArgument
   ): String = {
     if (genericArgumentInstance.lifetimeGenericArgument.isDefined) {
-      codeForLifetimeGenericArgument(filename, parentFullname, genericArgumentInstance.lifetimeGenericArgument.get)
+      codeForLifetime(filename, parentFullname, genericArgumentInstance.lifetimeGenericArgument.get)
     } else if (genericArgumentInstance.typeGenericArgument.isDefined) {
-      codeForTypeGenericArgument(filename, parentFullname, genericArgumentInstance.typeGenericArgument.get)
+      typeFullnameForType(filename, parentFullname, genericArgumentInstance.typeGenericArgument.get)
     } else if (genericArgumentInstance.constGenericArgument.isDefined) {
-      codeForConstGenericArgument(filename, parentFullname, genericArgumentInstance.constGenericArgument.get)
+      codeForExpr(filename, parentFullname, genericArgumentInstance.constGenericArgument.get)
     } else if (genericArgumentInstance.assocTypeGenericArgument.isDefined) {
       codeForAssocTypeGenericArgument(filename, parentFullname, genericArgumentInstance.assocTypeGenericArgument.get)
     } else if (genericArgumentInstance.assocConstGenericArgument.isDefined) {
@@ -87,24 +141,24 @@ trait CodeForGenericArgument(implicit schemaValidationMode: ValidationMode) { th
     }
   }
 
-  def codeForLifetimeGenericArgument(filename: String, parentFullname: String, lifetimeInstance: Lifetime): String = {
-    codeForLifetime(filename, parentFullname, lifetimeInstance)
-  }
-
-  def codeForTypeGenericArgument(filename: String, parentFullname: String, typeInstance: Type): String = {
-    typeFullnameForType(filename, parentFullname, typeInstance)
-  }
-
-  def codeForConstGenericArgument(filename: String, parentFullname: String, constInstance: Expr): String = {
-    codeForExpr(filename, parentFullname, constInstance)
-  }
-
   def codeForAssocTypeGenericArgument(
     filename: String,
     parentFullname: String,
     assocTypeInstance: AssocType
   ): String = {
-    ""
+    val name = assocTypeInstance.ident
+    var code = assocTypeInstance.generics match {
+      case Some(generics) => {
+        val angleCode = codeForAngleBracketedGenericArguments(filename, parentFullname, generics)
+        s"$name$angleCode"
+      }
+      case None => name
+    }
+    code = assocTypeInstance.ty match {
+      case Some(ty) => s"$code = ${typeFullnameForType(filename, parentFullname, ty)}"
+      case None     => code
+    }
+    code
   }
 
   def codeForAssocConstGenericArgument(
@@ -112,7 +166,22 @@ trait CodeForGenericArgument(implicit schemaValidationMode: ValidationMode) { th
     parentFullname: String,
     assocConstInstance: AssocConst
   ): String = {
-    ""
+    var code = s"const ${assocConstInstance.ident}"
+    code = assocConstInstance.generics match {
+      case Some(generics) => {
+        val angleCode = codeForAngleBracketedGenericArguments(filename, parentFullname, generics)
+        s"$code$angleCode"
+      }
+      case None => code
+    }
+    code = assocConstInstance.value match {
+      case Some(value) => {
+        val exprCode = codeForExpr(filename, parentFullname, value)
+        s"$code = $exprCode"
+      }
+      case None => code
+    }
+    code
   }
 
   def codeForConstraintGenericArgument(
@@ -120,6 +189,19 @@ trait CodeForGenericArgument(implicit schemaValidationMode: ValidationMode) { th
     parentFullname: String,
     constraintInstance: Constraint
   ): String = {
-    ""
+    var code = constraintInstance.ident
+    code = constraintInstance.generics match {
+      case Some(generics) => {
+        val angleCode = codeForAngleBracketedGenericArguments(filename, parentFullname, generics)
+        s"$code$angleCode"
+      }
+      case None => code
+    }
+    code = constraintInstance.bounds.nonEmpty match {
+      case true =>
+        s"$code: ${constraintInstance.bounds.map(codeForTypeParamBound(filename, parentFullname, _)).mkString(" + ")}"
+      case false => code
+    }
+    code
   }
 }

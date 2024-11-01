@@ -103,7 +103,7 @@ trait AstForFields(implicit schemaValidationMode: ValidationMode) { this: AstCre
     fieldInstance.ident match {
       case Some(ident) => {
         val identNode =
-          identifierNode(UnknownAst(), ident, ident, typeFullname)
+          identifierNode(fieldInstance, ident, ident, typeFullname)
         Ast(node)
           .withChild(Ast(identNode))
           .withChild(typeAst)

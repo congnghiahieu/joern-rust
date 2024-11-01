@@ -9,13 +9,13 @@ import io.shiftleft.passes.CpgPass
 import io.shiftleft.semanticcpg.language.*
 import overflowdb.BatchedUpdate
 
-class ModuleResolverPass(cpg: Cpg, goModule: CargoCrate) extends CpgPass(cpg) {
+class ModuleResolverPass(cpg: Cpg, cargoCrate: CargoCrate) extends CpgPass(cpg) {
 
   override def run(builder: BatchedUpdate.DiffGraphBuilder): Unit = {
     val moduleNamespace = NewNamespaceBlock()
-      .name(goModule.moduleName)
+      .name(cargoCrate.crateName)
       .filename("\\")
-      .fullName(goModule.moduleName)
+      .fullName(cargoCrate.crateName)
     builder.addNode(moduleNamespace)
     cpg.namespaceBlock.foreach(namespaceBlock => {
       if (!namespaceBlock.name.equals("<global>")) {

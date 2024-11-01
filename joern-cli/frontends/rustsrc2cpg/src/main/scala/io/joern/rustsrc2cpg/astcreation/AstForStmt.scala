@@ -65,7 +65,7 @@ trait AstForStmt(implicit schemaValidationMode: ValidationMode) { this: AstCreat
       case None      => Defines.Unknown
     }
     val code = s"let $name"
-    val node = localNode(localInstance, code, code, "")
+    val node = localNode(localInstance, name, code, "")
     val patAst = localInstance.pat match {
       case Some(pat) => astForPat(filename, parentFullname, pat)
       case None      => Ast()
