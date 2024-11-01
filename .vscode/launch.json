@@ -7,10 +7,10 @@
     {
       "type": "scala",
       "request": "launch",
-      "name": "gosrc2cpg Object Main",
+      "name": "gosrc2cpg Object Small Exmaples",
       "mainClass": "io.joern.gosrc2cpg.Main",
       "args": [
-        "/home/hieucien/Workspace/ast/joern-rust/gin"
+        "/home/hieucien/Workspace/joern-rust/go"
       ],
       "jvmOptions": [],
       "env": {}
@@ -32,18 +32,7 @@
       "name": "rustsrc2cpg Object Main Examples",
       "mainClass": "io.joern.rustsrc2cpg.Main",
       "args": [
-        "/home/hieucien/Workspace/ast/rust-parser/tests/examples"
-      ],
-      "jvmOptions": [],
-      "env": {}
-    },
-    {
-      "type": "scala",
-      "request": "launch",
-      "name": "rustsrc2cpg Object Main If Else",
-      "mainClass": "io.joern.rustsrc2cpg.Main",
-      "args": [
-        "/home/hieucien/Workspace/rust-parser/tests/examples/expressions/if"
+        "/home/hieucien/Workspace/rust-parser/tests/examples"
       ],
       "jvmOptions": [],
       "env": {}
